@@ -8,6 +8,7 @@ import {
 } from '../journey/journeyReminderService.js';
 import { buildGoldenMoment } from '../journey/goldenMoment.js';
 import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
+import { buildPrimarySellerPortalReactionActivity } from './buildSellerPortalReactionActivity.js';
 
 function customerName(lead = {}) {
   return lead?.contact?.name || lead?.name || 'Kunde';
@@ -22,6 +23,37 @@ export function getTodayOverview(leads = [], options = {}) {
   const now = options.now ?? new Date();
   const byLead = new Map();
 
+  // Portal-Reaktionen zuerst (First-Class in Heute)
+  for (const lead of leads) {
+    if (!lead?.id) continue;
+    if (lead.status === 'verloren' || lead.status === 'ausgeliefert') continue;
+    const activity = buildPrimarySellerPortalReactionActivity(lead);
+    if (!activity) continue;
+    const detailParts = [
+      ...(activity.diffLines || []),
+      ...(activity.openQuestionLines || []).slice(0, 1),
+    ].filter(Boolean);
+    byLead.set(lead.id, {
+      leadId: lead.id,
+      customerName: activity.customerName || customerName(lead),
+      headline: activity.headline,
+      detail: detailParts.join(' · ') || activity.wasLine || null,
+      reasons: (activity.reasonLines || []).filter(Boolean).slice(0, 4),
+      overdue: false,
+      dueToday: true,
+      hasAppointmentToday: false,
+      hasCustomerReaction: true,
+      openSellerAction: true,
+      actionId: activity.actionId,
+      primaryCtaLabel: activity.primaryCtaLabel,
+      offerDraftId: activity.offerDraftId || null,
+      vehicleCardId: activity.vehicleCardId || null,
+      portalActivityKind: activity.kind,
+      portalActivity: activity,
+      sortRank: typeof activity.sortRank === 'number' ? activity.sortRank : 0,
+    });
+  }
+
   const reminders = evaluateSellerReminders(leads, { ...options, maxItems: 40 });
   for (const item of reminders) {
     const reasons = [];
@@ -31,6 +63,17 @@ export function getTodayOverview(leads = [], options = {}) {
     else if (item.subline) reasons.push(String(item.subline));
     if (item.reminder?.reason && !reasons.includes(item.reminder.reason)) {
       reasons.push(String(item.reminder.reason));
+    }
+
+    const existing = byLead.get(item.leadId);
+    if (existing?.portalActivityKind) {
+      existing.reasons = [...new Set([
+        ...existing.reasons,
+        ...reasons.filter(Boolean),
+      ])].slice(0, 4);
+      existing.overdue = existing.overdue || Boolean(item.overdue);
+      existing.dueToday = true;
+      continue;
     }
 
     byLead.set(item.leadId, {
@@ -78,7 +121,9 @@ export function getTodayOverview(leads = [], options = {}) {
       existing.overdue = existing.overdue || item.overdue;
       existing.dueToday = existing.dueToday || item.dueToday;
       existing.openSellerAction = true;
-      existing.sortRank = Math.min(existing.sortRank, item.overdue ? 0 : 1);
+      if (!existing.portalActivityKind) {
+        existing.sortRank = Math.min(existing.sortRank, item.overdue ? 0 : 1);
+      }
     }
   }
 
@@ -123,7 +168,7 @@ export function getTodayOverview(leads = [], options = {}) {
         existing.headline = golden.headline;
         existing.detail = golden.subline || golden.reason || existing.detail;
       }
-      if (succession) {
+      if (succession && !existing.portalActivityKind) {
         existing.actionId = 'prepare_succession_offer';
         existing.composerAction = 'prepare_followup_offer';
         existing.primaryCtaLabel = golden.primaryLabel || 'Nachfolgeangebot vorbereiten';
@@ -132,7 +177,9 @@ export function getTodayOverview(leads = [], options = {}) {
         existing.actionId = golden.recommendedAction;
       }
       existing.openSellerAction = true;
-      existing.sortRank = Math.min(existing.sortRank, 4);
+      if (!existing.portalActivityKind) {
+        existing.sortRank = Math.min(existing.sortRank, 4);
+      }
       byLead.set(lead.id, existing);
     }
 

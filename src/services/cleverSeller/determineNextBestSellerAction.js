@@ -18,11 +18,12 @@ import {
   resolveSourceOfferDraftId,
   VEHICLE_OFFER_STATUS,
 } from '../vehicleOffer.js';
+import { listOfferDraftsMissingVehicleOffer } from './materializeVehicleOfferFromOfferDraft.js';
 import {
   countUnterlagenOpenTasks,
 } from '../cleverUnterlagen.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
-import { resolveActiveOfferDraft } from './cleverWorkingDraft.js';
+import { getCleverWorkingState, resolveActiveOfferDraft } from './cleverWorkingDraft.js';
 import { hasPreparedOutboundOfferCue } from './commercialOfferNl.js';
 
 export const NEXT_BEST_ACTION_ID = Object.freeze({
@@ -66,9 +67,38 @@ export function findPortalChangeRequest(lead = {}) {
     if (reaction?.status !== PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED) continue;
     return {
       item,
-      offerDraftId: resolveSourceOfferDraftId(item) || item.offerDraftId || null,
+      offerDraftId: resolveSourceOfferDraftId(item)
+        || item.offerDraftId
+        || item.sourceOfferDraftId
+        || null,
       questionText: String(reaction.questionText || '').trim(),
       changeDimension: reaction.changeDimension || null,
+      cardId: item.vehicleCardId || item.id || null,
+      requestedMileage: reaction.requestedMileage ?? null,
+      requestedDownPayment: reaction.requestedDownPayment ?? null,
+    };
+  }
+  return null;
+}
+
+/**
+ * Reine Kundenfrage (more_info) – kein Change, keine Rate-Invalidierung.
+ */
+export function findPortalCustomerQuestion(lead = {}) {
+  const items = lead?.crm?.customerOfferPortfolio?.items;
+  if (!Array.isArray(items)) return null;
+  for (const item of items) {
+    const reaction = item?.customerReaction;
+    if (reaction?.status !== PORTFOLIO_REACTION_STATUS.MORE_INFO) continue;
+    const questionText = String(reaction.questionText || '').trim();
+    if (!questionText) continue;
+    return {
+      item,
+      offerDraftId: resolveSourceOfferDraftId(item)
+        || item.offerDraftId
+        || item.sourceOfferDraftId
+        || null,
+      questionText,
       cardId: item.vehicleCardId || item.id || null,
     };
   }
@@ -504,6 +534,26 @@ export function determineNextBestSellerAction({
     };
   }
 
+  // 1b) Reine Portal-Frage → Antworten (kein modify_offer, keine Rate stale)
+  const portalQuestion = findPortalCustomerQuestion(lead);
+  if (portalQuestion) {
+    return {
+      id: NEXT_BEST_ACTION_ID.DRAFT_MESSAGE,
+      label: 'Antworten',
+      toolId: 'draft_message',
+      handler: 'draft_message',
+      contextPayload: {
+        offerDraftId: portalQuestion.offerDraftId,
+        cardId: portalQuestion.cardId,
+        questionText: portalQuestion.questionText,
+        seedDraft: portalQuestion.questionText
+          ? `Antwort auf Kundenfrage: ${portalQuestion.questionText}`
+          : 'Beantworte die Kundenfrage zum Angebot.',
+      },
+      reason: 'portal_customer_question',
+    };
+  }
+
   const committed = hasCustomerOfferCommitment(lead);
 
   // 2) Post-Commit: nach Zusage keine Offer-Phase – außer neue ungesendete Version
@@ -570,8 +620,36 @@ export function determineNextBestSellerAction({
   }
 
   // 3) Sendbares VehicleOffer → intend_send (vor Commit)
+  // Multi-Offer (≥2 Concept-Drafts): unvollständige Drafts ohne VO zuerst fertigstellen
   const sendable = findSendableVehicleOffer(lead);
   if (sendable) {
+    const draftCount = Object.keys(getCleverWorkingState(lead)?.offerDrafts || {}).length;
+    const incompleteDrafts = draftCount >= 2
+      ? listOfferDraftsMissingVehicleOffer(lead)
+      : [];
+    if (incompleteDrafts.length > 0) {
+      const nextDraft = incompleteDrafts[0];
+      const identity = nextDraft.vehicleIdentityDraft || {};
+      return {
+        id: NEXT_BEST_ACTION_ID.PREPARE_OFFER,
+        label: 'Angebot vorbereiten',
+        toolId: 'prepare_offer',
+        handler: 'prepare_offer',
+        contextPayload: {
+          modelKey: identity.modelKey || identity.model?.canonical || null,
+          offerDraftId: nextDraft.offerDraftId,
+          vehicleTrackId: nextDraft.vehicleTrackId || null,
+          paymentType: nextDraft.commercialScenario?.paymentType || lead.wish?.paymentType || null,
+          termMonths: nextDraft.commercialScenario?.termMonths ?? lead.wish?.termMonths ?? null,
+          annualMileage: nextDraft.commercialScenario?.annualMileage
+            ?? nextDraft.commercialScenario?.mileagePerYear
+            ?? lead.wish?.mileagePerYear
+            ?? null,
+          downPayment: nextDraft.commercialScenario?.downPayment ?? lead.wish?.downPayment ?? null,
+        },
+        reason: 'multi_offer_draft_incomplete',
+      };
+    }
     return {
       id: NEXT_BEST_ACTION_ID.INTEND_SEND,
       label: 'An Kunden senden',

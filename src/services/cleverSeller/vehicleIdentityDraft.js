@@ -232,14 +232,28 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
 
   const trimRaw = input.trim
     || interest?.value?.trim
+    || interest?.value?.trimCandidate?.raw
     || (typeof trimFact?.value === 'object' ? trimFact.value?.trim : trimFact?.value)
     || (Array.isArray(trimFact?.value) ? trimFact.value[0] : null)
     || trimFact?.label
     || existing?.trim?.raw
     || null;
-  const trimCanonical = displayTrim(trimRaw);
+  const trimCanonical = interest?.value?.trimCandidate
+    ? null
+    : displayTrim(trimRaw);
+  const trimSlot = interest?.value?.trimCandidate
+    ? slot({
+      raw: interest.value.trimCandidate.raw || trimRaw,
+      canonical: null,
+      status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+    })
+    : null;
 
-  let colorRaw = colorRawFromFact(colorFact) || existing?.color?.raw || null;
+  let colorRaw = interest?.value?.color
+    || interest?.value?.preferredColor
+    || colorRawFromFact(colorFact)
+    || existing?.color?.raw
+    || null;
   if (!colorRaw) {
     const colorHaystack = [input.sellerInput, ...unresolvedNotes, interest?.label].filter(Boolean).join(' ');
     const colorMatch = colorHaystack.match(
@@ -281,9 +295,27 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
         pushPackage(typeof p === 'string' ? p : (p?.label || p?.name || p?.raw));
       }
     }
+    if (Array.isArray(interest.value.packageCandidates)) {
+      for (const p of interest.value.packageCandidates) {
+        const raw = typeof p === 'string' ? p : (p?.raw || p?.label);
+        if (!raw) continue;
+        const text = String(raw).trim();
+        const key = normalizeKey(text);
+        if (!key || seenPkg.has(key)) continue;
+        seenPkg.add(key);
+        packages.push(slot({
+          raw: p?.label || text,
+          canonical: null,
+          status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+        }));
+      }
+    }
   }
   // Seller-Text + unresolvedNotes Fallback (Zero-Loss, keine Erfindung)
-  const packageHaystack = [input.sellerInput, ...unresolvedNotes].filter(Boolean).join(' ');
+  // Bei scoped Interest mit eigener Farbe/Kandidaten: kein globales Package-Scannen
+  const packageHaystack = (interest?.value?.color || interest?.value?.trimCandidate || interest?.value?.packageCandidates?.length)
+    ? ''
+    : [input.sellerInput, ...unresolvedNotes].filter(Boolean).join(' ');
   const isPackageRemoveCue = /\b(?:raus|weg|entfernen|ohne)\b/i.test(packageHaystack)
     || /\b(?:nimm|entferne|streich).{0,40}\b(?:raus|weg|entfernen)\b/i.test(packageHaystack);
   if (packageHaystack && !isPackageRemoveCue) {
@@ -352,7 +384,7 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
         ? IDENTITY_SLOT_STATUS.CAPTURED
         : (modelRaw ? IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT : IDENTITY_SLOT_STATUS.OPEN),
     }),
-    trim: slot({
+    trim: trimSlot || slot({
       raw: trimRaw ? String(trimRaw).trim() : null,
       canonical: trimCanonical,
       status: trimCanonical

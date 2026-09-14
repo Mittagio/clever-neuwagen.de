@@ -181,6 +181,18 @@ import {
   findSendableVehicleOffer,
 } from '../../services/cleverSeller/determineNextBestSellerAction.js';
 import {
+  buildOfferPreparationHandoffModel,
+  resolvePrepareOfferDraftId,
+} from '../../services/cleverSeller/buildOfferPreparationHandoffModel.js';
+import { buildApplicationPrepareHandoffModel } from '../../services/cleverSeller/buildApplicationPrepareHandoffModel.js';
+import { buildOfferChangeHandoffModel } from '../../services/cleverSeller/buildOfferChangeHandoffModel.js';
+import { ensureConceptOfferDraftFromCapture } from '../../services/cleverSeller/ensureConceptOfferDraftFromCapture.js';
+import {
+  getOfferDraftById,
+  upsertOfferDraftOnLead,
+  buildHandoffFromOfferDraftId,
+} from '../../services/cleverSeller/cleverWorkingDraft.js';
+import {
   appointmentTypeLabel,
   formatAppointmentWhen,
   listLeadAppointments,
@@ -444,7 +456,18 @@ export default function DealerAiLeadFollowUp({
   const [moreSheetOpen, setMoreSheetOpen] = useState(false);
   /** Freeze: Kundenwissen startet collapsed → light Summary-Chips sichtbar */
   const [kundenbildExpanded, setKundenbildExpanded] = useState(false);
+  /** Phase 2: Kundenwissen nicht im Clever-First-Screen – Details-Sheet */
+  const [kundenDetailsOpen, setKundenDetailsOpen] = useState(false);
   const [kundeDetailsOpen, setKundeDetailsOpen] = useState(false);
+  /** Slim PDF-first Prep nach NBA prepare_offer (keine Calculator-Auto-Open). */
+  const [offerPrepHandoffDraftId, setOfferPrepHandoffDraftId] = useState(null);
+  const [offerPrepNbaPayload, setOfferPrepNbaPayload] = useState(null);
+  /** Slim Abschluss-Handoff nach NBA application_prepare (kein Docs-Checklisten-First). */
+  const [applicationPrepareHandoffOpen, setApplicationPrepareHandoffOpen] = useState(false);
+  /** Quiet Change Diff nach NBA modify_offer (Suggested Update). */
+  const [offerChangeHandoffOpen, setOfferChangeHandoffOpen] = useState(false);
+  const [offerChangeHandoffDismissedKey, setOfferChangeHandoffDismissedKey] = useState(null);
+  const [offerChangeNbaPayload, setOfferChangeNbaPayload] = useState(null);
   const [angeboteFilter, setAngeboteFilter] = useState('all');
   const [activeSheet, setActiveSheet] = useState(
     initialSheet === SHEETS.questionAnswer
@@ -994,6 +1017,96 @@ export default function DealerAiLeadFollowUp({
     [lead],
   );
   const nextBestSellerAction = sellerWorkBriefing?.nextBestAction || null;
+
+  const offerPrepHandoffModel = useMemo(() => {
+    if (!offerPrepHandoffDraftId || !lead) return null;
+    return buildOfferPreparationHandoffModel({
+      lead,
+      offerDraftId: offerPrepHandoffDraftId,
+      nbaPayload: offerPrepNbaPayload || {},
+    });
+  }, [lead, offerPrepHandoffDraftId, offerPrepNbaPayload]);
+
+  const applicationPrepareHandoffModel = useMemo(() => {
+    if (!applicationPrepareHandoffOpen || !lead) return null;
+    return buildApplicationPrepareHandoffModel({ lead });
+  }, [lead, applicationPrepareHandoffOpen]);
+
+  const offerChangeHandoffModel = useMemo(() => {
+    if (!lead) return null;
+    const nbaIsModify = nextBestSellerAction?.handler === 'modify_offer';
+    if (!offerChangeHandoffOpen && !nbaIsModify) return null;
+    const payload = offerChangeNbaPayload || nextBestSellerAction?.contextPayload || {};
+    const dismissKey = `${lead.id}:${payload.offerDraftId || payload.cardId || 'change'}`;
+    if (offerChangeHandoffDismissedKey === dismissKey && !offerChangeHandoffOpen) {
+      return null;
+    }
+    return buildOfferChangeHandoffModel({
+      lead,
+      nbaPayload: payload,
+    });
+  }, [
+    lead,
+    offerChangeHandoffOpen,
+    offerChangeNbaPayload,
+    offerChangeHandoffDismissedKey,
+    nextBestSellerAction?.handler,
+    nextBestSellerAction?.contextPayload,
+  ]);
+
+  useEffect(() => {
+    if (nextBestSellerAction?.handler !== 'modify_offer' || !lead?.id) return;
+    const payload = nextBestSellerAction.contextPayload || {};
+    const dismissKey = `${lead.id}:${payload.offerDraftId || payload.cardId || 'change'}`;
+    if (offerChangeHandoffDismissedKey === dismissKey) return;
+    setOfferChangeNbaPayload(payload);
+    setOfferChangeHandoffOpen(true);
+  }, [
+    lead?.id,
+    nextBestSellerAction?.handler,
+    nextBestSellerAction?.contextPayload?.offerDraftId,
+    nextBestSellerAction?.contextPayload?.cardId,
+    offerChangeHandoffDismissedKey,
+  ]);
+
+  useEffect(() => {
+    if (!offerPrepHandoffDraftId) return;
+    if (findSendableVehicleOffer(lead) || nextBestSellerAction?.handler === 'intend_send') {
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+    }
+  }, [lead, offerPrepHandoffDraftId, nextBestSellerAction?.handler]);
+
+  useEffect(() => {
+    if (offerPrepHandoffDraftId && !offerPrepHandoffModel) {
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+    }
+  }, [offerPrepHandoffDraftId, offerPrepHandoffModel]);
+
+  useEffect(() => {
+    if (!applicationPrepareHandoffOpen) return;
+    if (!applicationPrepareHandoffModel
+      || nextBestSellerAction?.handler !== 'application_prepare') {
+      setApplicationPrepareHandoffOpen(false);
+    }
+  }, [
+    applicationPrepareHandoffOpen,
+    applicationPrepareHandoffModel,
+    nextBestSellerAction?.handler,
+  ]);
+
+  useEffect(() => {
+    if (!offerChangeHandoffOpen) return;
+    if (!offerChangeHandoffModel || nextBestSellerAction?.handler !== 'modify_offer') {
+      setOfferChangeHandoffOpen(false);
+      setOfferChangeNbaPayload(null);
+    }
+  }, [
+    offerChangeHandoffOpen,
+    offerChangeHandoffModel,
+    nextBestSellerAction?.handler,
+  ]);
 
   const cleverEmpfiehltView = useMemo(() => {
     let view = journeyResult?.view;
@@ -3529,6 +3642,9 @@ export default function DealerAiLeadFollowUp({
       || {};
 
     if (handler === 'intend_send') {
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+      setApplicationPrepareHandoffOpen(false);
       handleCleverSendToCustomer({
         ...view,
         handlerType: 'offer_send_portfolio',
@@ -3536,25 +3652,50 @@ export default function DealerAiLeadFollowUp({
       });
       return true;
     }
+    if (handler === 'draft_message') {
+      // Bestehender Composer-Handoff – kein Fake-Send, kein neues Nachrichten-Center
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+      setApplicationPrepareHandoffOpen(false);
+      setAkteTab(AKTE_TABS.clever);
+      setCleverMode(true);
+      focusChatComposer({
+        clever: true,
+        seedDraft: payload.seedDraft
+          || payload.messageDraft
+          || 'Prüfe die Nachricht an den Kunden.',
+      });
+      return true;
+    }
     if (handler === 'prepare_offer') {
-      if (payload.modelKey && onPrepareOffer) {
-        onPrepareOffer({
-          id: payload.modelKey,
+      // PDF-first Prep-Handoff: strict offerDraftId, kein Calculator Auto-Open
+      let workingLead = lead;
+      let draftId = resolvePrepareOfferDraftId(workingLead, payload);
+      if ((!draftId || !getOfferDraftById(workingLead, draftId)) && payload.modelKey) {
+        const ensured = ensureConceptOfferDraftFromCapture(workingLead, [], {
           modelKey: payload.modelKey,
-          name: `Kia ${String(payload.modelKey).toUpperCase()}`,
-          trimLabel: payload.trim || undefined,
-          offerDraftId: payload.offerDraftId || undefined,
-          paymentType: payload.paymentType || undefined,
-          termMonths: payload.termMonths || undefined,
-          mileagePerYear: payload.annualMileage || undefined,
-          downPayment: payload.downPayment || undefined,
+          force: true,
+          sellerInput: '',
+          createNewAlternative: false,
         });
+        if (ensured.offerDraftId) {
+          workingLead = ensured.lead;
+          draftId = ensured.offerDraftId;
+        }
+      }
+      if (draftId && getOfferDraftById(workingLead, draftId)) {
+        const draft = getOfferDraftById(workingLead, draftId);
+        workingLead = upsertOfferDraftOnLead(workingLead, draft);
+        onSave?.(buildSavePayload({
+          cleverWorkingState: workingLead.crm?.cleverWorkingState,
+        }), { silent: true, addFollowupHistory: false });
+        setOfferPrepHandoffDraftId(draftId);
+        setOfferPrepNbaPayload({ ...payload, offerDraftId: draftId });
+        setAkteTab(AKTE_TABS.clever);
+        setCleverMode(true);
         return true;
       }
-      if (onPrepareOfferFromClever) {
-        onPrepareOfferFromClever();
-        return true;
-      }
+      // Kein stiller Calculator-Fallback – Composer mit Kontext
       focusChatComposer({
         clever: true,
         seedDraft: payload.seedDraft
@@ -3565,22 +3706,13 @@ export default function DealerAiLeadFollowUp({
       return true;
     }
     if (handler === 'modify_offer') {
-      const cardId = payload.cardId;
-      const card = cardId
-        ? vehicleCards.find((c) => c.id === cardId)
-        : vehicleCards[0];
-      if (card && onOpenOfferEdit) {
-        onOpenOfferEdit(card);
-      } else if (card) {
-        openBoardOfferFromCard(card);
-      }
-      focusChatComposer({
-        clever: true,
-        seedDraft: payload.seedDraft
-          || (payload.questionText
-            ? `Passe Angebot an: ${payload.questionText}`
-            : 'Passe das Angebot an die Kundenänderung an.'),
-      });
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+      setApplicationPrepareHandoffOpen(false);
+      setAkteTab(AKTE_TABS.clever);
+      setCleverMode(true);
+      setOfferChangeNbaPayload(payload || {});
+      setOfferChangeHandoffOpen(true);
       return true;
     }
     if (handler === 'consultation') {
@@ -3605,8 +3737,20 @@ export default function DealerAiLeadFollowUp({
       });
       return true;
     }
-    if (handler === 'request_documents') {
+    if (handler === 'request_documents'
+      || handler === 'self_disclosure_request'
+      || handler === 'documents'
+      || handler === 'unterlagen') {
+      setApplicationPrepareHandoffOpen(false);
       openSheet(SHEETS.unterlagen);
+      return true;
+    }
+    if (handler === 'application_prepare') {
+      setOfferPrepHandoffDraftId(null);
+      setOfferPrepNbaPayload(null);
+      setAkteTab(AKTE_TABS.clever);
+      setCleverMode(true);
+      setApplicationPrepareHandoffOpen(true);
       return true;
     }
     if (handler === 'create_follow_up') {
@@ -3835,8 +3979,12 @@ export default function DealerAiLeadFollowUp({
   const offerWorkPanel = renderOfferWorkPanel();
   const offerWorkAssist = renderOfferWorkPanel();
 
-  /** Mitte: Arbeitsgrundlage + genau eine Primary CTA (NBA). Golden Moment nur ohne NBA. */
-  const cleverStageSlot = hideComposerFeed ? (
+  /** Mitte: Arbeitsgrundlage + genau eine Primary CTA (NBA). Golden Moment nur ohne NBA.
+   * PDF-first Prep / Application-Prepare ersetzen die Stage (keine doppelte NBA-UI). */
+  const cleverStageSlot = hideComposerFeed
+    && !offerPrepHandoffModel
+    && !applicationPrepareHandoffModel
+    && !offerChangeHandoffModel ? (
     (nextBestSellerAction || cleverEmpfiehltView) ? (
       <CleverEmpfiehltCard
         view={{
@@ -3856,6 +4004,10 @@ export default function DealerAiLeadFollowUp({
         onPrepareMessage={handlePrepareMessageSuggestion}
         recentActivities={recentStageActivities}
         onOpenAllActivities={openActivitiesSheet}
+        onOpenDetails={customerSnapshot ? (() => {
+          setKundenbildExpanded(true);
+          setKundenDetailsOpen(true);
+        }) : null}
       />
     ) : goldenMomentView ? (
       <div className="sw-chat__empty-recommend sw-chat__empty-recommend--stage">
@@ -3966,6 +4118,85 @@ export default function DealerAiLeadFollowUp({
         onFocusFeedMessage={focusFeedMessage}
         workspaceSlot={offerWorkPanel}
         cleverStageSlot={cleverStageSlot}
+        offerPrepHandoffModel={offerPrepHandoffModel}
+        onDismissOfferPrepHandoff={() => {
+          setOfferPrepHandoffDraftId(null);
+          setOfferPrepNbaPayload(null);
+        }}
+        applicationPrepareHandoffModel={applicationPrepareHandoffModel}
+        onDismissApplicationPrepareHandoff={() => setApplicationPrepareHandoffOpen(false)}
+        onOpenUnterlagenFromHandoff={() => {
+          setApplicationPrepareHandoffOpen(false);
+          openSheet(SHEETS.unterlagen);
+        }}
+        offerChangeHandoffModel={offerChangeHandoffModel}
+        onDismissOfferChangeHandoff={() => {
+          const payload = offerChangeNbaPayload || nextBestSellerAction?.contextPayload || {};
+          if (lead?.id) {
+            setOfferChangeHandoffDismissedKey(
+              `${lead.id}:${payload.offerDraftId || payload.cardId || 'change'}`,
+            );
+          }
+          setOfferChangeHandoffOpen(false);
+          setOfferChangeNbaPayload(null);
+        }}
+        onApplyOfferChangeHandoff={(action = {}) => {
+          const offerDraftId = action.offerDraftId
+            || offerChangeNbaPayload?.offerDraftId
+            || offerChangeHandoffModel?.offerDraftId
+            || nextBestSellerAction?.contextPayload?.offerDraftId
+            || null;
+          const cardId = action.cardId
+            || offerChangeNbaPayload?.cardId
+            || nextBestSellerAction?.contextPayload?.cardId
+            || null;
+          setOfferChangeHandoffOpen(false);
+          setOfferChangeNbaPayload(null);
+
+          // Draft-strict: sourceOfferDraftId / offerDraftId vor Card-Fallback
+          if (offerDraftId) {
+            const resolved = buildHandoffFromOfferDraftId(lead, offerDraftId, {
+              sellerInput: action.seedDraft
+                || action.questionText
+                || offerChangeNbaPayload?.questionText
+                || '',
+            });
+            if (resolved.ok) {
+              handleSellerAssistPrepareOffer({
+                magic: {
+                  ...resolved.magic,
+                  offerDraftId,
+                },
+                lead,
+                offerDraftId,
+              });
+              focusChatComposer({
+                clever: true,
+                seedDraft: action.seedDraft
+                  || (action.questionText
+                    ? `Passe Angebot an: ${action.questionText}`
+                    : 'Passe das Angebot an die Kundenänderung an.'),
+              });
+              return;
+            }
+          }
+
+          const card = cardId
+            ? vehicleCards.find((c) => c.id === cardId)
+            : vehicleCards[0];
+          if (card && onOpenOfferEdit) {
+            onOpenOfferEdit(card);
+          } else if (card) {
+            openBoardOfferFromCard(card);
+          }
+          focusChatComposer({
+            clever: true,
+            seedDraft: action.seedDraft
+              || (action.questionText
+                ? `Passe Angebot an: ${action.questionText}`
+                : 'Passe das Angebot an die Kundenänderung an.'),
+          });
+        }}
         cleverHintLabels={cleverHintLabels}
         compactEmpty
         hideFeed={hideComposerFeed}
@@ -3977,6 +4208,24 @@ export default function DealerAiLeadFollowUp({
         onAttachOffer={openAttachOfferPicker}
         onAttachDocument={openAttachDocumentPicker}
         onPrepareOfferDraft={handleSellerAssistPrepareOffer}
+        onCompactNextStep={(nextStep) => {
+          const label = String(nextStep?.label || nextStep?.cta || '');
+          const id = String(nextStep?.id || '');
+          if (id === 'capture_then_consult' || /Fahrzeuge finden|Beratung/i.test(label)) {
+            handleNextBestSellerAction(
+              { nextBestAction: nextBestSellerAction },
+              { handlerType: 'consultation', contextPayload: nextBestSellerAction?.contextPayload || {} },
+            );
+            return;
+          }
+          handleNextBestSellerAction(
+            { nextBestAction: nextBestSellerAction },
+            {
+              handlerType: 'prepare_offer',
+              contextPayload: nextBestSellerAction?.contextPayload || {},
+            },
+          );
+        }}
         onSendPortfolio={handlePrepareCustomerLink}
         onMessageSent={() => {
           if (inboxItemIdForAntworten) handleInboxItemHandled(inboxItemIdForAntworten);
@@ -4166,7 +4415,7 @@ export default function DealerAiLeadFollowUp({
             onMissingPhone={() => openSheet(SHEETS.customer)}
           />
         )}
-        band={customerSnapshot ? (
+        band={isChatTab && customerSnapshot ? (
           <CustomerAkteKundenbild
             model={customerSnapshot}
             expanded={kundenbildExpanded}
@@ -4218,6 +4467,49 @@ export default function DealerAiLeadFollowUp({
         onPortal={() => handleOpenPortalShare()}
         onLexikon={() => openSheet(SHEETS.lexikon)}
       />
+
+      {kundenDetailsOpen && customerSnapshot ? (
+        <div className="cust-akte-details-sheet" role="dialog" aria-label="Kundendetails">
+          <button
+            type="button"
+            className="cust-akte-details-sheet__backdrop"
+            aria-label="Schließen"
+            onClick={() => setKundenDetailsOpen(false)}
+          />
+          <div className="cust-akte-details-sheet__panel">
+            <header className="cust-akte-details-sheet__header">
+              <h2 className="cust-akte-details-sheet__title">Details</h2>
+              <button
+                type="button"
+                className="cust-akte-details-sheet__close"
+                onClick={() => setKundenDetailsOpen(false)}
+              >
+                Schließen
+              </button>
+            </header>
+            <div className="cust-akte-details-sheet__body">
+              <CustomerAkteKundenbild
+                model={customerSnapshot}
+                expanded={kundenbildExpanded}
+                variant="full"
+                leanHeaderActive={Boolean(headerContextLine)}
+                onToggle={setKundenbildExpanded}
+                onFactTap={handleKundenbildFactTap}
+                onAddToGroup={handleAddToSoftGroup}
+                onEditConditions={() => {
+                  setKundenDetailsOpen(false);
+                  openWishConditionsSheet();
+                }}
+                onMerken={() => {
+                  setKundenDetailsOpen(false);
+                  openWissenPicker();
+                }}
+                onAusstattungErgaenzen={handleAusstattungErgaenzen}
+              />
+            </div>
+          </div>
+        </div>
+      ) : null}
 
       <CustomerAkteWishConditionsSheet
         open={activeSheet === SHEETS.wishConditions}

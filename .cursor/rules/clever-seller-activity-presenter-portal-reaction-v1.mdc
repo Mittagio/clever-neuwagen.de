@@ -1,0 +1,41 @@
+# PATTERN-FREEZE: Seller Activity Presenter / Portal Reaction V1
+
+**Status: pilotfähig**
+
+## Produktsatz
+
+> Clever macht aus einer Portal-Reaktion eine Verkäufer-Aktivität: WER · WAS · IST→SOLL · NEXT.
+
+## Produktregeln
+
+1. Keine zweite Wahrheit – Lead/Portfolio/NBA bleiben Authority
+2. Genau ein Primary CTA
+3. Frage ≠ Change (Rate bleibt gültig bei reiner Frage)
+4. Mixed Frage+Change = Partial Success (Change Primary + offene Frage)
+5. Draft-strict CTA: `sourceOfferDraftId` → `offerDraftId` → Card-Fallback
+6. Heute / Clever Reaktionen / Kundenakte nutzen denselben Presenter
+
+## Eingefroren
+
+- Presenter: `buildSellerPortalReactionActivity.js`
+- Freitext-Signale: `portalReactionSignals.js` (keine neue NLP-Pipeline)
+- Heute: `getTodayOverview` + Focus Queue Ranking
+- Inbox-Sync: Portfolio-Reaktionen in `syncInboxItemsFromLead`
+- Quiet Diff + openQuestions: `buildOfferChangeHandoffModel`
+- NBA: `findPortalCustomerQuestion` → Antworten
+- MORE_INFO mit preisrelevantem Freitext → Change Request (Partial Success)
+- Golden: `sellerPortalReactionActivity.golden.test.js`
+
+## Nicht
+
+- Kein neues Nachrichtensystem / Dashboard
+- Keine neue Offer-/Intake-Architektur
+- Keine weiteren künstlichen Portal-Varianten erfinden
+
+## Nächster Prozess
+
+echte Portal-Reaktion → neues Muster ja/nein → nur systemisch fixen → Golden → Regression
+
+## Doc
+
+`docs/CLEVER_ZERO_LOSS_INTAKE.md` · Cross: Portal Change Stability V1

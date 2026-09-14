@@ -72,10 +72,30 @@ export function normalizeCommercialScenario(raw = {}) {
     annualMileage: asNumber(raw.annualMileage ?? raw.mileagePerYear),
     mileagePerYear: asNumber(raw.mileagePerYear ?? raw.annualMileage),
     downPayment: asNumber(raw.downPayment, 0) ?? 0,
+    discountPercent: asNumber(raw.discountPercent ?? raw.discount),
+    discountBase: raw.discountBase || (asNumber(raw.discountPercent ?? raw.discount) != null ? 'listPrice' : null),
     source: raw.source || COMMERCIAL_SCENARIO_SOURCE.CUSTOMER_MESSAGE,
     vehicleTrackId: raw.vehicleTrackId ?? null,
     label: raw.label ?? null,
   };
+}
+
+/**
+ * Track-/Draft-gebundene Kopie – verhindert Shared leasing-1 über mehrere Identitäten.
+ */
+export function scopeCommercialScenarioToTrack(commercial = null, vehicleTrackId = null) {
+  const base = normalizeCommercialScenario(commercial);
+  if (!base || !vehicleTrackId) return base;
+  const trackId = String(vehicleTrackId);
+  if (base.vehicleTrackId === trackId
+    && String(base.id || '').includes(trackId)) {
+    return base;
+  }
+  return normalizeCommercialScenario({
+    ...base,
+    id: `${base.type}-${trackId}`,
+    vehicleTrackId: trackId,
+  });
 }
 
 export function normalizeScenarioType(value) {

@@ -1,0 +1,26 @@
+# PATTERN-FREEZE: Portal Change Request Stability V1
+
+**Status: pilotfähig**
+
+## Produktsatz
+
+> Konditionsänderung am Portal → Ziel-Offer invalidieren, Quiet Diff, Draft-Isolation. Kein Cross-Leak.
+
+## Eingefroren
+
+- Preisrelevante Change Requests (km / AZ / Laufzeit) → `rateAuthority = stale`, `invalidateVehicleRate`
+- Quiet Diff: km + Anzahlung inkl. **0 €** als echter Wert
+- Portfolio-Item trägt `sourceOfferDraftId` / `offerDraftId`
+- Commercial Scenarios track-gebunden (`leasing-<trackId>`) in Working Drafts
+- Autoritative Re-PDF / Materialisierung → `resolvePortfolioChangeRequestForOfferDraft` (NBA freigeben)
+- Golden: `ulmerPortalChangeStability.golden.test.js`
+
+## Nicht
+
+- Keine neue Portal-Architektur
+- Keine Fake-Neuberechnung der Rate
+- Keine weiteren künstlichen Change-Varianten erfinden
+
+## Doc
+
+`docs/CLEVER_ZERO_LOSS_INTAKE.md` (Cross: Multi-Offer Capture / PDF Materialization / Seller Activity Presenter)

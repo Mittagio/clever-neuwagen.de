@@ -19,6 +19,9 @@ const CTA_BY_ACTION = {
   portal_link_send: 'Kundenlink senden',
   leasing_ready: 'Leasingantrag starten',
   delivery_ready: 'Übergabe planen',
+  modify_offer: 'Angebot anpassen',
+  application_prepare: 'Abschluss vorbereiten',
+  draft_message: 'Antworten',
 };
 
 function normalizeText(value) {
@@ -121,11 +124,16 @@ export function buildNaturalRecommendationSummary({
 }
 
 function workSortRank(item = {}) {
-  if (item.overdue) return 0;
-  if (item.dueToday || item.hasAppointmentToday) return 1;
-  if (item.hasCustomerReaction) return 2;
-  if (item.openSellerAction) return 3;
-  return 5;
+  if (item.portalActivityKind === 'change_request') return 0;
+  if (item.portalActivityKind === 'interested') return 1;
+  if (item.portalActivityKind === 'question' || item.portalActivityKind === 'call_requested') {
+    return 2;
+  }
+  if (item.overdue) return 3;
+  if (item.dueToday || item.hasAppointmentToday) return 4;
+  if (item.hasCustomerReaction) return 5;
+  if (item.openSellerAction) return 6;
+  return 8;
 }
 
 /**
@@ -171,6 +179,14 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
         existing.primaryCtaLabel = item.primaryCtaLabel || existing.primaryCtaLabel;
         existing.composerAction = item.composerAction || existing.composerAction;
         existing.customerName = item.customerName || existing.customerName;
+        existing.offerDraftId = item.offerDraftId || existing.offerDraftId;
+        existing.portalActivityKind = item.portalActivityKind || existing.portalActivityKind;
+        existing.portalActivity = item.portalActivity || existing.portalActivity;
+      } else if (item.portalActivityKind && !existing.portalActivityKind) {
+        existing.portalActivityKind = item.portalActivityKind;
+        existing.portalActivity = item.portalActivity;
+        existing.offerDraftId = item.offerDraftId || existing.offerDraftId;
+        existing.primaryCtaLabel = item.primaryCtaLabel || existing.primaryCtaLabel;
       }
     }
     for (const key of keys) keyToGroup.set(key, groupId);
@@ -211,11 +227,18 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
       ].filter(Boolean))].slice(0, 4);
 
       const ctaLabel = resolveCtaLabel(item, view);
-      const whySummary = buildNaturalRecommendationSummary({
-        reasons,
-        whyBullets: view?.whyBullets || [],
-        detail: item.detail,
-      });
+      const whySummary = item.portalActivityKind
+        ? ([item.detail, ...(item.reasons || []).slice(0, 2)].filter(Boolean).join('. ')
+          || buildNaturalRecommendationSummary({
+            reasons,
+            whyBullets: view?.whyBullets || [],
+            detail: item.detail,
+          }))
+        : buildNaturalRecommendationSummary({
+          reasons,
+          whyBullets: view?.whyBullets || [],
+          detail: item.detail,
+        });
 
       const callAction = (view?.actions || []).find((a) => a.type === 'call' && a.href) || null;
       const wantsCall = /anrufen/i.test(String(ctaLabel || ''))
@@ -226,11 +249,17 @@ export function buildDashboardTodayRecommendations(leads = [], options = {}) {
       return {
         leadId: item.leadId,
         customerName: item.customerName || 'Kunde',
-        headline: view?.headline || item.headline || ctaLabel,
+        headline: item.portalActivityKind
+          ? (item.headline || ctaLabel)
+          : (view?.headline || item.headline || ctaLabel),
         whySummary,
-        reasons,
+        reasons: item.portalActivityKind
+          ? (item.reasons || reasons).slice(0, 4)
+          : reasons,
         ctaLabel,
         actionId: item.actionId || view?.actionId || null,
+        offerDraftId: item.offerDraftId || null,
+        portalActivityKind: item.portalActivityKind || null,
         ctaHref,
         phone: phone || null,
         dueTodayBadge: item.overdue

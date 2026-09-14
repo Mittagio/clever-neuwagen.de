@@ -954,6 +954,82 @@ export function syncInboxItemsFromLead(lead = {}) {
     }
   });
 
+  // Lead Authority: Portfolio-Reaktionen → Clever Reaktionen (kein localStorage-only)
+  const portfolioItems = lead.crm?.customerOfferPortfolio?.items;
+  if (Array.isArray(portfolioItems)) {
+    for (const entry of portfolioItems) {
+      const status = entry?.customerReaction?.status;
+      if (!status || status === 'none') continue;
+
+      let type = null;
+      let title = 'Kundenrückmeldung';
+      let suggestedIntent = null;
+      if (status === 'change_requested') {
+        type = INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST;
+        title = 'Änderungswunsch zum Angebot';
+        suggestedIntent = 'offer_change_request';
+      } else if (status === 'interested') {
+        type = INBOX_EVENT_TYPES.OFFER_INTERESTED;
+        title = 'Interesse am Angebot';
+      } else if (status === 'more_info') {
+        type = INBOX_EVENT_TYPES.CUSTOMER_MESSAGE;
+        title = 'Frage zum Angebot';
+        suggestedIntent = 'answer_customer_question';
+      } else if (status === 'call_requested') {
+        type = INBOX_EVENT_TYPES.CONTACT_REQUESTED;
+        title = 'Rückruf gewünscht';
+      } else if (status === 'declined') {
+        type = INBOX_EVENT_TYPES.OFFER_DECLINED;
+        title = 'Angebot passt nicht';
+      }
+      if (!type) continue;
+
+      const vehicleLabel = entry.trimLabel
+        ? `${entry.modelLabel} · ${entry.trimLabel}`
+        : (entry.modelLabel || lead.vehicle?.model || 'Angebot');
+      const questionText = String(entry.customerReaction?.questionText || '').trim();
+      const message = questionText
+        ? `${title}: „${questionText}“`
+        : title;
+      const offerDraftId = entry.sourceOfferDraftId
+        || entry.offerDraftId
+        || null;
+      const eventKey = status === 'change_requested'
+        ? 'portfolio_offer_change_request'
+        : status === 'more_info'
+          ? 'portfolio_offer_more_info'
+          : `portfolio_${status}`;
+
+      created.push(createInboxItem({
+        type,
+        title,
+        message,
+        customerId: lead.id,
+        customerName: lead.contact?.name ?? lead.name ?? '',
+        leadId: lead.id,
+        offerId: entry.vehicleCardId ?? entry.variantId ?? entry.id,
+        vehicleLabel,
+        sourceArea: INBOX_SOURCE_AREA.CUSTOMER_LINK,
+        priority: status === 'change_requested' || status === 'call_requested'
+          ? INBOX_PRIORITY.HIGH
+          : INBOX_PRIORITY.NORMAL,
+        status: INBOX_STATUS.OPEN,
+        metadata: {
+          dedupeKey: `portfolio:${lead.id}:${entry.id}:${eventKey}`,
+          portfolioItemId: entry.id,
+          portfolioId: lead.crm?.customerOfferPortfolio?.id,
+          offerDraftId,
+          vehicleCardId: entry.vehicleCardId ?? null,
+          ...(questionText ? { questionText } : {}),
+          ...(entry.customerReaction?.changeDimension
+            ? { changeDimension: entry.customerReaction.changeDimension }
+            : {}),
+          ...(suggestedIntent ? { suggestedIntent } : {}),
+        },
+      }));
+    }
+  }
+
   return created;
 }
 

@@ -1,0 +1,48 @@
+---
+description: Pattern-Freeze Multi-Offer Capture V1 – pilotfähig
+alwaysApply: true
+---
+
+# PATTERN-FREEZE: Multi-Offer Capture V1
+
+**Status: pilotfähig**
+
+## Produktsatz
+
+> „Zweites Angebot“ = zweite Fahrzeugidentität. Leasing bleibt. Bar kommt zusätzlich als Commercial Scenario – nicht als Override.
+
+## Produktregeln
+
+1. Cue „zweites Angebot“ / „zweite Variante“ / „alternativ noch“ → Sibling-Identity trotz gleichem Modell
+2. Unklare Trim-/Paket-Kandidaten lokal am Draft (`needs_refinement` / „… prüfen“) – nicht erfinden, nicht nur global notieren
+3. Gemeinsame Leasing-Konditionen an beiden Identitäten; rate = null bis PDF/Calculator
+4. „zusätzlich Barangebot“ → Dual `commercialScenarios` (leasing + cash), cash ersetzt leasing nicht
+5. Genau 2 Tracks / 2 Concept Drafts – keine 4 Fahrzeugspuren für 2×(Leasing+Bar)
+6. Ausstattung/Farbe variantenscharf (kein Last-Wins)
+
+## Eingefroren
+
+- `SECOND_OFFER_IDENTITY_RE` + Sibling-Hits in `interpretSellerInput.js`
+- Dual commercial bei zusätzlich-Bar + Laufzeit/km/AZ
+- `ensureMultiVehicleInterestTracksOnLead` mit farb-/identity-basiertem `vehicleKey`
+- Multi-Draft-Erzeugung in `applyAcceptedSellerTurn` (vor Single prepare_offer)
+- Golden: `ulmerMultiOfferCapture.golden.test.js`
+
+## Nicht
+
+- Keine neue Intake-/Offer-Architektur
+- Keine Katalog-Erfindung für R / VIC
+- Keine weiteren künstlichen Dual-Offer-Varianten erfinden
+
+## PDF → VehicleOffer (Folge)
+
+Nach autoritativem PDF-Merge: `materializeVehicleOfferFromOfferDraft` (idempotent by `offerDraftId` / `sourceOfferDraftId`).
+Golden: `ulmerPdfOfferMaterialization.golden.test.js`
+
+## Nächster Prozess
+
+echte Anfrage → neues Muster ja/nein → nur systemisch fixen → Golden → Regression
+
+## Doc
+
+`docs/CLEVER_ZERO_LOSS_INTAKE.md`

@@ -73,7 +73,10 @@ import {
   isScenarioOfferReady,
   recordOfferOpened,
   resolveSourceOfferDraftId,
+  listStoredVehicleOffers,
 } from '../vehicleOffer.js';
+import { RATE_AUTHORITY } from '../cleverSeller/captureThenOffer.js';
+import { getOfferDraftById, upsertOfferDraftOnLead } from '../cleverSeller/cleverWorkingDraft.js';
 import { isBoardOfferSendable } from '../dealer/boardOfferModel.js';
 import { applyPortfolioReactionToTracks } from './mapPortfolioReactionToTrackFeedback.js';
 import {
@@ -148,6 +151,136 @@ function normalizePaymentType(paymentType = 'leasing') {
 
 function requiresPdfForPayment(paymentType) {
   return normalizePaymentType(paymentType) !== 'cash';
+}
+
+/** Preisrelevante Portal-Änderung → Rate darf nicht authoritative bleiben. */
+export function isPriceRelevantOfferChange({
+  changeDimension = null,
+  questionText = '',
+} = {}) {
+  const dim = String(changeDimension || '').toLowerCase();
+  if (dim === 'mileage' || dim === 'term' || dim === 'down_payment') return true;
+  const t = String(questionText || '').toLowerCase();
+  if (!t.trim()) return false;
+  if (/\b(?:km|kilometer)\b/.test(t)) return true;
+  if (/\b(?:laufzeit|monate?)\b/.test(t)) return true;
+  if (/\b(?:anzahlung|sonderzahlung|ohne\s+anzahlung)\b/.test(t)) return true;
+  return false;
+}
+
+export function parseRequestedMileageFromChangeText(questionText = '') {
+  const raw = String(questionText || '');
+  // „15.000 statt 12.500“ → neuer Wert zuerst
+  const stattNew = raw.match(
+    /(\d{1,2}(?:[.\s]\d{3})+|\d{4,6})\s+statt\b/i,
+  );
+  if (stattNew) {
+    const n = Number(String(stattNew[1]).replace(/[.\s]/g, ''));
+    if (Number.isFinite(n) && n >= 1000) return n;
+  }
+  const preferred = raw.match(
+    /(?:mit|auf|bitte)\s+(\d{1,2}(?:[.\s]\d{3})+|\d{4,6})\s*(?:km|kilometer)/i,
+  ) || raw.match(
+    /(\d{1,2}(?:[.\s]\d{3})+|\d{4,6})\s*(?:km|kilometer)/i,
+  );
+  if (!preferred) return null;
+  const n = Number(String(preferred[1]).replace(/[.\s]/g, ''));
+  return Number.isFinite(n) && n >= 1000 ? n : null;
+}
+
+/**
+ * 0 € ist ein echter Wert (nicht falsy/missing).
+ * @returns {number|null}
+ */
+export function parseRequestedDownPaymentFromChangeText(questionText = '') {
+  const raw = String(questionText || '');
+  if (/\bohne\s+anzahlung\b|\bkeine\s+anzahlung\b|\banzahlung\s*(?:von\s*)?(?:0|null)\b/i.test(raw)) {
+    return 0;
+  }
+  const m = raw.match(/\banzahlung\b[^\d]{0,24}(\d{1,3}(?:[.\s]\d{3})*|\d+)/i)
+    || raw.match(/(\d{1,3}(?:[.\s]\d{3})*|\d+)\s*€?\s*(?:anzahlung|sonderzahlung)/i);
+  if (!m) return null;
+  const n = Number(String(m[1]).replace(/[.\s]/g, ''));
+  return Number.isFinite(n) ? n : null;
+}
+
+function resolveOfferKeyForPortfolioItem(lead, item) {
+  const cardId = item?.vehicleCardId || null;
+  const offerId = item?.offerId || null;
+  const map = lead?.crm?.vehicleOffers || {};
+  if (offerId && map[offerId]) return offerId;
+  if (cardId && map[cardId]) return cardId;
+  const bySrc = listStoredVehicleOffers(lead).find((o) => (
+    o.id === offerId
+    || o.vehicleCardId === cardId
+    || o.vehicleTrackId === cardId
+  ));
+  return bySrc?.id || bySrc?.vehicleCardId || cardId || offerId || null;
+}
+
+/**
+ * Invalidiert aktuelle Rate am Ziel-Offer (+ Working Draft), behält Rate-Wert historisch.
+ */
+export function invalidateVehicleOfferRateForChange(lead, item) {
+  if (!lead || !item) return lead;
+  const key = resolveOfferKeyForPortfolioItem(lead, item);
+  let nextLead = lead;
+  if (key) {
+    const prev = getVehicleOffer(lead, { id: key }) || listStoredVehicleOffers(lead)
+      .find((o) => o.id === key || o.vehicleCardId === key) || {};
+    const patch = {
+      ...prev,
+      rateAuthority: RATE_AUTHORITY.STALE,
+      invalidateVehicleRate: true,
+      rateNeedsReview: true,
+      boardOffer: {
+        ...(prev.boardOffer || {}),
+        rateAuthority: RATE_AUTHORITY.STALE,
+      },
+      updatedAt: new Date().toISOString(),
+    };
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...(nextLead.crm || {}),
+        vehicleOffers: mergeVehicleOffersPatch(nextLead, key, patch),
+      },
+    };
+    // Auch unter offerId spiegeln, wenn Card-Key ≠ Offer-Id
+    if (item.offerId && item.offerId !== key) {
+      nextLead = {
+        ...nextLead,
+        crm: {
+          ...nextLead.crm,
+          vehicleOffers: mergeVehicleOffersPatch(nextLead, item.offerId, {
+            ...patch,
+            id: item.offerId,
+          }),
+        },
+      };
+    }
+  }
+
+  const draftId = resolveSourceOfferDraftId(item)
+    || resolveSourceOfferDraftId(
+      listStoredVehicleOffers(nextLead).find((o) => (
+        o.vehicleCardId === item.vehicleCardId || o.id === item.offerId
+      )),
+    )
+    || null;
+  if (draftId) {
+    const draft = getOfferDraftById(nextLead, draftId);
+    if (draft) {
+      nextLead = upsertOfferDraftOnLead(nextLead, {
+        ...draft,
+        rateAuthority: RATE_AUTHORITY.STALE,
+        invalidateVehicleRate: true,
+        // Rate-Wert behalten (Historie), nur Authority entziehen
+        rate: draft.rate,
+      });
+    }
+  }
+  return nextLead;
 }
 
 function historyEntry(text, type = 'customer_activity') {
@@ -297,6 +430,7 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
     variantId: null,
     vehicleCardId: card.id,
     offerDraftId: resolveSourceOfferDraftId(vehicleOffer) || resolveSourceOfferDraftId(card) || null,
+    sourceOfferDraftId: resolveSourceOfferDraftId(vehicleOffer) || resolveSourceOfferDraftId(card) || null,
     modelKey: card.modelKey,
     modelLabel: title,
     trimLabel: card.trimLabel ?? null,
@@ -339,8 +473,13 @@ function buildPortfolioItemFromVehicleCard(card, lead = null) {
 export function buildPortfolioItemFromCommercialScenario(lead, track, slot) {
   if (!lead || !track || !slot?.ready) return null;
   const scenario = slot.scenario;
-  const offer = slot.offer
+  let offer = slot.offer
     ?? getOfferByCommercialScenarioId(lead, slot.scenarioId, track.id);
+  if (!offer) {
+    offer = listStoredVehicleOffers(lead).find((o) => (
+      o.vehicleTrackId === track.id || o.vehicleCardId === track.id
+    )) || null;
+  }
   if (!isScenarioOfferReady(offer) && !slot.ready) return null;
 
   const paymentType = scenario?.type ?? slot.type ?? 'leasing';
@@ -354,6 +493,9 @@ export function buildPortfolioItemFromCommercialScenario(lead, track, slot) {
     colorId: track.config?.colorId ?? null,
     trimId: track.config?.trimId ?? null,
   });
+  const sourceDraftId = resolveSourceOfferDraftId(offer)
+    || resolveSourceOfferDraftId(slot)
+    || null;
 
   return enrichPortfolioItemWithEnVkv({
     id: nextId('pu'),
@@ -362,6 +504,8 @@ export function buildPortfolioItemFromCommercialScenario(lead, track, slot) {
     variantId: null,
     vehicleCardId: track.id,
     offerId: offer?.id ?? slot.offerId ?? null,
+    offerDraftId: sourceDraftId,
+    sourceOfferDraftId: sourceDraftId,
     commercialScenarioId: slot.scenarioId,
     modelKey: track.config?.modelKey ?? null,
     modelLabel: track.displayName || track.modelLabel,
@@ -422,11 +566,16 @@ export function buildPortfolioItems({
     const tracks = listCustomerVehicleTracks(lead);
     for (const track of tracks) {
       if (!track.hasMultipleScenarios && !(track.scenarioSlots?.length > 1)) continue;
-      scenarioTrackIds.add(track.id);
+      let addedForTrack = false;
       for (const slot of track.scenarioSlots ?? []) {
         const item = buildPortfolioItemFromCommercialScenario(lead, track, slot);
-        if (item) items.push(item);
+        if (item) {
+          items.push(item);
+          addedForTrack = true;
+        }
       }
+      // Nur wenn Szenario-Items wirklich entstanden: Card-Fallback für diese Spur sperren
+      if (addedForTrack) scenarioTrackIds.add(track.id);
     }
   }
 
@@ -518,6 +667,68 @@ export function markPortfolioSent(portfolio) {
     status: PORTFOLIO_STATUS.SENT,
     sentAt: new Date().toISOString(),
     updatedAt: new Date().toISOString(),
+  };
+}
+
+/**
+ * Nach autoritativer Neu-Kalkulation / Re-PDF: Change Request am Ziel-Draft schließen.
+ * Sonst bleibt NBA auf „Angebot anpassen“ stecken.
+ */
+export function resolvePortfolioChangeRequestForOfferDraft(lead = {}, offerDraftId = null, options = {}) {
+  if (!lead || !offerDraftId) return lead;
+  const portfolio = lead?.crm?.customerOfferPortfolio;
+  const items = portfolio?.items;
+  if (!Array.isArray(items) || !items.length) return lead;
+
+  const now = new Date().toISOString();
+  let changed = false;
+  const nextItems = items.map((item) => {
+    const src = resolveSourceOfferDraftId(item)
+      || item.sourceOfferDraftId
+      || item.offerDraftId
+      || null;
+    if (src !== offerDraftId) return item;
+    if (item.customerReaction?.status !== PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED) {
+      return item;
+    }
+    changed = true;
+    return {
+      ...item,
+      customerReaction: {
+        ...(item.customerReaction || {}),
+        status: PORTFOLIO_REACTION_STATUS.NONE,
+        changeDimension: null,
+        requestedMileage: null,
+        requestedDownPayment: null,
+        // Freitext behalten (z. B. offene Farbfrage) – Status nicht mehr change
+        questionText: item.customerReaction?.questionText || '',
+        resolvedAt: now,
+        resolvedReason: options.reason || 'offer_updated_authoritative',
+      },
+    };
+  });
+  if (!changed) return lead;
+
+  const hasAnyReaction = nextItems.some((entry) => (
+    entry.customerReaction?.status
+    && entry.customerReaction.status !== PORTFOLIO_REACTION_STATUS.NONE
+  ));
+
+  return {
+    ...lead,
+    crm: {
+      ...(lead.crm || {}),
+      customerOfferPortfolio: {
+        ...portfolio,
+        items: nextItems,
+        status: hasAnyReaction ? PORTFOLIO_STATUS.REACTED : (
+          portfolio.status === PORTFOLIO_STATUS.REACTED
+            ? PORTFOLIO_STATUS.SENT
+            : portfolio.status
+        ),
+        updatedAt: now,
+      },
+    },
   };
 }
 
@@ -827,7 +1038,10 @@ function buildInboxForPortfolioEvent({
       dedupeKey: `portfolio:${lead.id}:${item.id}:${eventType}`,
       portfolioItemId: item.id,
       portfolioId: lead.crm?.customerOfferPortfolio?.id,
-      offerDraftId: resolveSourceOfferDraftId(item) || null,
+      offerDraftId: resolveSourceOfferDraftId(item)
+        || item.sourceOfferDraftId
+        || item.offerDraftId
+        || null,
       vehicleCardId: item.vehicleCardId ?? null,
       ...(trimmedQuestion ? { questionText: trimmedQuestion } : {}),
       ...(changeDimension ? { changeDimension } : {}),
@@ -851,11 +1065,16 @@ function applyReactionToSelectionGroups(groups, item, reactionStatus) {
   });
 }
 
-function applyReactionToVehicleOffer(lead, item, reactionStatus) {
-  if (item.sourceType !== 'vehicle_card' || !item.vehicleCardId) {
+function applyReactionToVehicleOffer(lead, item, reactionStatus, options = {}) {
+  const cardId = item?.vehicleCardId || null;
+  const offerId = item?.offerId || null;
+  if (!cardId && !offerId) {
     return lead?.crm?.vehicleOffers ?? {};
   }
-  const prev = getVehicleOffer(lead, { id: item.vehicleCardId });
+  const key = resolveOfferKeyForPortfolioItem(lead, item) || cardId || offerId;
+  const prev = getVehicleOffer(lead, { id: key })
+    || listStoredVehicleOffers(lead).find((o) => o.id === key || o.vehicleCardId === key)
+    || {};
   let status = prev.status;
   if (reactionStatus === PORTFOLIO_REACTION_STATUS.INTERESTED
     || reactionStatus === PORTFOLIO_REACTION_STATUS.CALL_REQUESTED) {
@@ -863,9 +1082,25 @@ function applyReactionToVehicleOffer(lead, item, reactionStatus) {
   } else if (reactionStatus === PORTFOLIO_REACTION_STATUS.DECLINED) {
     status = VEHICLE_OFFER_STATUS.REJECTED;
   }
-  return mergeVehicleOffersPatch(lead, item.vehicleCardId, {
+
+  const priceRelevant = reactionStatus === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED
+    && isPriceRelevantOfferChange(options);
+  const ratePatch = priceRelevant
+    ? {
+      rateAuthority: RATE_AUTHORITY.STALE,
+      invalidateVehicleRate: true,
+      rateNeedsReview: true,
+      boardOffer: {
+        ...(prev.boardOffer || {}),
+        rateAuthority: RATE_AUTHORITY.STALE,
+      },
+    }
+    : {};
+
+  return mergeVehicleOffersPatch(lead, key, {
     ...prev,
     status,
+    ...ratePatch,
   });
 }
 
@@ -1000,8 +1235,16 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       case PORTFOLIO_EVENTS.OFFER_MORE_INFO: {
         const trimmed = String(questionText ?? '').trim();
         if (!trimmed) return { ok: false, error: 'question_required' };
-        reactionStatus = PORTFOLIO_REACTION_STATUS.MORE_INFO;
-        historyText = `Kunde möchte mehr Infos (${item.modelLabel}): „${trimmed}“`;
+        // Partial Success: Freitext mit sicherer Konditionsänderung → Change Request
+        // (Frage bleibt im questionText; Presenter zeigt openQuestions)
+        if (isPriceRelevantOfferChange({ questionText: trimmed, changeDimension })) {
+          reactionStatus = PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED;
+          historyText = `Kunde wünscht Änderung (${item.modelLabel}): „${trimmed}“`;
+          eventType = PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST;
+        } else {
+          reactionStatus = PORTFOLIO_REACTION_STATUS.MORE_INFO;
+          historyText = `Kunde möchte mehr Infos (${item.modelLabel}): „${trimmed}“`;
+        }
         break;
       }
       case PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST: {
@@ -1015,6 +1258,13 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
         return { ok: false, error: 'unknown_event' };
     }
 
+    const requestedMileage = reactionStatus === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED
+      ? parseRequestedMileageFromChangeText(questionText)
+      : null;
+    const requestedDownPayment = reactionStatus === PORTFOLIO_REACTION_STATUS.CHANGE_REQUESTED
+      ? parseRequestedDownPaymentFromChangeText(questionText)
+      : null;
+
     const updatedItems = portfolio.items.map((entry, index) => {
       if (index !== itemIndex) return entry;
       return {
@@ -1025,6 +1275,8 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
           declineNote: declineNote?.trim() ?? '',
           questionText: questionText?.trim() ?? '',
           changeDimension: changeDimension || null,
+          ...(requestedMileage != null ? { requestedMileage } : {}),
+          ...(requestedDownPayment != null ? { requestedDownPayment } : {}),
           reactedAt: now,
         },
       };
@@ -1074,7 +1326,10 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       reactedItem,
       reactionStatus,
     );
-    vehicleOffers = applyReactionToVehicleOffer(lead, reactedItem, reactionStatus);
+    vehicleOffers = applyReactionToVehicleOffer(lead, reactedItem, reactionStatus, {
+      changeDimension,
+      questionText,
+    });
   }
 
   let finalLead = {
@@ -1091,6 +1346,17 @@ export function applyPortfolioEvent(lead = {}, offerUnitId = '', eventType, opti
       historyEntry(historyText),
     ],
   };
+
+  if (
+    eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST
+    && itemIndex >= 0
+    && isPriceRelevantOfferChange({ changeDimension, questionText })
+  ) {
+    finalLead = invalidateVehicleOfferRateForChange(
+      finalLead,
+      nextPortfolio.items[itemIndex],
+    );
+  }
 
   if ((eventType === PORTFOLIO_EVENTS.OFFER_MORE_INFO
     || eventType === PORTFOLIO_EVENTS.OFFER_CHANGE_REQUEST) && itemIndex >= 0) {

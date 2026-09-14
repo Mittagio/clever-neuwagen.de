@@ -20,6 +20,7 @@ import {
   OFFER_MUTATION_MODE,
 } from './offerVehicleIdentity.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
+import { scopeCommercialScenarioToTrack } from '../crm/commercialScenarios.js';
 
 function uid(prefix = 'wd') {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
@@ -500,7 +501,15 @@ export function upsertOfferDraftOnLead(lead, offerDraft, extras = {}) {
   if (!lead?.id || !offerDraft?.offerDraftId) return lead;
   const state = getCleverWorkingState(lead);
   const identity = offerDraft.vehicleIdentityDraft || extras.vehicleIdentityDraft || null;
-  const commercial = offerDraft.commercialScenario || extras.commercialScenario || null;
+  const commercialRaw = offerDraft.commercialScenario
+    || extras.commercialScenario
+    || (offerDraft.commercialScenarioId
+      ? state.commercialScenarios?.[offerDraft.commercialScenarioId]
+      : null)
+    || null;
+  const commercial = offerDraft.vehicleTrackId
+    ? (scopeCommercialScenarioToTrack(commercialRaw, offerDraft.vehicleTrackId) || commercialRaw)
+    : commercialRaw;
 
   if (identity?.id) {
     state.vehicleIdentityDrafts[identity.id] = {
@@ -529,6 +538,7 @@ export function upsertOfferDraftOnLead(lead, offerDraft, extras = {}) {
     focusModelKey: identity?.modelKey || offerDraft.focusModelKey || null,
     updatedAt: nowIso(),
     createdAt: offerDraft.createdAt || state.offerDrafts[offerDraft.offerDraftId]?.createdAt || nowIso(),
+    ...(offerDraft.pdfSource ? { pdfSource: offerDraft.pdfSource } : {}),
   };
   state.offerDrafts[offerDraft.offerDraftId] = stored;
   state.currentOfferDraftId = offerDraft.offerDraftId;

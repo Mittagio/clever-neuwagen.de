@@ -157,6 +157,9 @@ export function listCustomerVehicleTracks(lead = {}) {
         ?? vehicleOffer?.updatedAt
         ?? config.updatedAt
         ?? null,
+      preferredColor: meta.preferredColor ?? config.colorLabel ?? null,
+      colorLabel: config.colorLabel ?? meta.preferredColor ?? null,
+      modelKey: config.modelKey || null,
       monthlyRate: payment.monthlyRate,
       termMonths: payment.termMonths,
       annualMileage: payment.annualMileage,
@@ -348,6 +351,9 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
         trim: entry.trim || null,
         color: entry.color || entry.preferredColor || null,
         package: entry.package || entry.equipmentPackage || null,
+        trimCandidate: entry.trimCandidate || null,
+        packageCandidates: Array.isArray(entry.packageCandidates) ? entry.packageCandidates : [],
+        offerAlternative: Boolean(entry.offerAlternative),
         make: entry.make || 'Kia',
         label: entry.label
           || [entry.make || 'Kia', modelLabel, entry.trim].filter(Boolean).join(' '),
@@ -369,17 +375,25 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
   ));
 
   entries.forEach((interest, index) => {
+    const identitySuffix = [
+      interest.color,
+      interest.trimCandidate?.raw || interest.trim,
+      (interest.packageCandidates || [])[0]?.raw || interest.package,
+    ].filter(Boolean).join('-');
     const vehicleKey = buildVehicleKey({
       brand: 'kia',
       model: interest.model,
-      modelKey: interest.modelKey,
+      modelKey: identitySuffix
+        ? `${interest.modelKey}-${slugify(identitySuffix)}`
+        : interest.modelKey,
     });
     const ensured = ensureVehicleTrack(next, {
       vehicleKey,
       displayName: interest.label,
       model: interest.model,
       modelKey: interest.modelKey,
-      trimLabel: interest.trim || '',
+      trimLabel: interest.trim || interest.trimCandidate?.raw || '',
+      forceNew: Boolean(interest.offerAlternative || identitySuffix),
     });
     next = ensured.lead;
     if (ensured.created) createdCount += 1;
@@ -393,6 +407,8 @@ export function ensureMultiVehicleInterestTracksOnLead(lead = {}, interests = []
       ...(meta.customerRequirements || []),
       ...sharedRequirements,
       ...(interest.package ? [interest.package] : []),
+      ...(interest.trimCandidate?.label ? [interest.trimCandidate.label] : []),
+      ...((interest.packageCandidates || []).map((p) => p.label || p.raw).filter(Boolean)),
     ]);
     next = patchVehicleTrackOnLead(next, ensured.trackId, {
       status: shouldActivate ? VEHICLE_TRACK_STATUS.ACTIVE : (
@@ -710,10 +726,13 @@ export function ensureVehicleTrack(lead = {}, {
   model,
   modelKey,
   trimLabel = '',
+  forceNew = false,
 } = {}) {
   const tracks = listCustomerVehicleTracks(lead);
-  const existing = tracks.find((t) => t.vehicleKey === vehicleKey
-    || slugify(t.modelLabel) === slugify(model || modelKey || ''));
+  const existing = !forceNew
+    ? tracks.find((t) => t.vehicleKey === vehicleKey
+      || slugify(t.modelLabel) === slugify(model || modelKey || ''))
+    : tracks.find((t) => t.vehicleKey === vehicleKey);
   if (existing) {
     return { lead, trackId: existing.id, created: false };
   }

@@ -27,6 +27,10 @@ import {
   VEHICLE_TRACK_STATUS,
 } from '../crm/vehicleTrack.js';
 import { applyHomepageInquiryToLead } from '../crm/homepageCommercialInquiry.js';
+import {
+  normalizeCommercialScenario,
+  setCommercialScenariosOnLead,
+} from '../crm/commercialScenarios.js';
 import { answerDeliveryTimeOnLead } from '../crm/deliveryTimeQuestion.js';
 import { applyScenarioOfferFeedbackFacts } from '../crm/scenarioOfferFeedback.js';
 import { persistConfirmedCustomerContract } from '../crm/customerContracts.js';
@@ -39,6 +43,7 @@ import {
   deriveContactIdentity,
 } from '../dealer/customerContactIdentity.js';
 import { ensureConceptOfferDraftFromCapture } from './ensureConceptOfferDraftFromCapture.js';
+import { maybeMaterializeVehicleOfferAfterDraftUpsert } from './materializeVehicleOfferFromOfferDraft.js';
 import {
   classifySnapshotNoteLabel,
   isSnapshotContactIdentityLabel,
@@ -54,6 +59,7 @@ import {
   upsertOfferDraftOnLead,
   upsertMessageDraftOnLead,
   ensureOfferDraftBundleFromPayload,
+  getOfferDraftById,
 } from './cleverWorkingDraft.js';
 import {
   normalizeBatchModelKey,
@@ -206,6 +212,7 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         ? (value.amount ?? value.value ?? null)
         : value;
       const basis = typeof value === 'object' ? value.basis : null;
+      const authority = typeof value === 'object' ? value.authority : null;
       if (amount == null || !Number.isFinite(Number(amount))) continue;
       // Netto-Rate nie still als Brutto-Wunschrate übernehmen
       if (basis === 'net' && value?.acceptNetAsGross !== true) {
@@ -216,17 +223,75 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
         touchedProfile = true;
         continue;
       }
+      profile.budget = {
+        ...(profile.budget ?? {}),
+        maxMonthlyRate: Number(amount),
+      };
+      // Ziel-/Maximalbudget ≠ echte Angebotsrate (nur bei explizitem budget_cap)
+      if (
+        (typeof value === 'object' && value != null)
+        && (basis === 'max' || authority === 'budget_cap')
+      ) {
+        wish.maxMonthlyRate = Number(amount);
+        touchedWish = true;
+        touchedProfile = true;
+        continue;
+      }
       desiredRate = Number(amount);
       wish.desiredRate = desiredRate;
       if (basis === 'gross') {
         wish.desiredRateBasis = 'gross';
       }
-      profile.budget = {
-        ...(profile.budget ?? {}),
-        maxMonthlyRate: desiredRate,
-      };
       touchedWish = true;
       touchedProfile = true;
+    }
+
+    if (field === 'downPaymentMax' && value != null) {
+      const amount = typeof value === 'object' ? (value.amount ?? value.value) : value;
+      if (amount != null && Number.isFinite(Number(amount))) {
+        profile.budget = {
+          ...(profile.budget ?? {}),
+          maxDownPayment: Number(amount),
+        };
+        wish.maxDownPayment = Number(amount);
+        touchedWish = true;
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'payoffAmount' && value != null) {
+      const amount = typeof value === 'object' ? value.amount : value;
+      if (amount != null && Number.isFinite(Number(amount))) {
+        profile.understoodLabels = pushUnique(
+          profile.understoodLabels ?? [],
+          fact.label || `Restschuld ca. ${Number(amount).toLocaleString('de-DE')} €`,
+        );
+        profile.contractHints = {
+          ...(profile.contractHints ?? {}),
+          payoffAmount: Number(amount),
+          payoffStatus: value?.status || 'unverified',
+          payoffNeedsReview: true,
+        };
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'additionalDriver' && (value || fact.label)) {
+      const label = String(fact.label || value?.label || 'Mitnutzer').trim();
+      if (label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+        profile.usageContext = pushUnique(profile.usageContext ?? [], label);
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'tripContext' && (value || fact.label)) {
+      const label = String(fact.label || value?.label || value?.text || '').trim();
+      if (label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+        profile.personalNotes = pushUnique(profile.personalNotes ?? [], label);
+        touchedProfile = true;
+      }
     }
 
     if (field === 'annualMileage' && value != null) {
@@ -643,6 +708,35 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
       }
     }
 
+    if (field === 'colorVariants' && value) {
+      const colors = Array.isArray(value?.colors)
+        ? value.colors
+        : (Array.isArray(value) ? value : []);
+      const normalized = colors
+        .map((c) => String(c || '').trim().toLowerCase())
+        .filter(Boolean);
+      if (normalized.length >= 2) {
+        profile.colorVariants = [...new Set(normalized)];
+        // Kein Last-Wins: Präferenz nur wenn später explizit gewählt
+        if (!profile.colorPreference) {
+          profile.understoodLabels = pushUnique(
+            profile.understoodLabels ?? [],
+            `Farbe: ${normalized.map((c) => c.charAt(0).toUpperCase() + c.slice(1)).join(' / ')}`,
+          );
+        }
+        touchedProfile = true;
+      }
+    }
+
+    if (field === 'commercialBenefitProgram' && (value || fact.label)) {
+      const label = String(value?.label || fact.label || 'Corporate Benefits').trim();
+      if (label) {
+        profile.understoodLabels = pushUnique(profile.understoodLabels ?? [], label);
+        profile.commercialNotes = pushUnique(profile.commercialNotes ?? [], label);
+        touchedProfile = true;
+      }
+    }
+
     if (field === 'transmissionPreference' && value) {
       profile.transmission = String(value);
       touchedProfile = true;
@@ -868,6 +962,9 @@ export function applyStructuredFactsToLead(lead = {}, facts = []) {
             trim: entry.trim || null,
             color: entry.color || entry.preferredColor || null,
             package: entry.package || entry.equipmentPackage || null,
+            trimCandidate: entry.trimCandidate || null,
+            packageCandidates: Array.isArray(entry.packageCandidates) ? entry.packageCandidates : [],
+            offerAlternative: Boolean(entry.offerAlternative),
             make: entry.make || 'Kia',
             label: entry.label
               || [entry.make || 'Kia', model, entry.trim].filter(Boolean).join(' '),
@@ -1603,34 +1700,70 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     }
   }
 
-  // Epic 2: Dual commercial scenarios → eine Spur + zwei Offer-Slots
+  // Epic 2: Dual commercial scenarios
+  // Multi-Offer (2 Identitäten): Scenarios nur als Kundenwahrheit – keine Single-Track-Shells
   const homepageDraft = turn.homepageInquiry?.hasDualScenarios
     ? turn.homepageInquiry
     : null;
   const scenarioFact = facts.find((f) => f.field === 'commercialScenarios');
+  const multiOfferIdentities = facts.some((f) => (
+    f.field === 'vehicleInterestMulti'
+    && !f.consultationCandidates
+    && (
+      f.offerAlternatives === true
+      || (Array.isArray(f.value) && f.value.length >= 2
+        && f.value.every((v) => String(v?.modelKey || v?.model || v || '').toLowerCase().replace(/\s+/g, '') === String(f.value[0]?.modelKey || f.value[0]?.model || f.value[0] || '').toLowerCase().replace(/\s+/g, '')))
+    )
+  ));
   if (homepageDraft || (Array.isArray(scenarioFact?.value) && scenarioFact.value.length >= 2)) {
-    const draft = homepageDraft || {
-      model: facts.find((f) => f.field === 'vehicleInterest')?.value?.model
-        || facts.find((f) => f.field === 'vehicleInterest')?.label
-        || workingLead.vehicle?.model
-        || null,
-      modelKey: facts.find((f) => f.field === 'vehicleInterest')?.value?.modelKey || null,
-      configurationAttached: facts.some((f) => f.field === 'configurationAttached'),
-      customerType: facts.find((f) => f.field === 'customerType')?.value || 'private',
-      commercialScenarios: scenarioFact.value,
-      openQuestions: facts
-        .filter((f) => f.field === 'deliveryTime')
-        .map((f) => ({
-          id: 'delivery_time',
-          field: 'deliveryTime',
-          label: f.label || 'Lieferzeit beantworten',
-          question: f.value?.question || 'Wie ist die Lieferzeit?',
-        })),
-      hasDualScenarios: true,
-    };
-    const appliedHome = applyHomepageInquiryToLead(nextLead, draft, { createOfferShells: true });
-    if (appliedHome.ok) {
-      nextLead = appliedHome.lead;
+    if (multiOfferIdentities && Array.isArray(scenarioFact?.value)) {
+      const scenarios = scenarioFact.value
+        .map((s, index) => normalizeCommercialScenario({
+          ...s,
+          id: s.id || `${s.type || s.paymentType}-${index + 1}`,
+          source: s.source || 'seller',
+        }))
+        .filter(Boolean);
+      if (scenarios.length) {
+        nextLead = setCommercialScenariosOnLead(nextLead, scenarios);
+        nextLead = {
+          ...nextLead,
+          wish: {
+            ...(nextLead.wish || {}),
+            paymentType: scenarios.find((s) => s.type === 'leasing')?.type
+              || scenarios[0]?.type
+              || nextLead.wish?.paymentType,
+            commercialScenarios: scenarios,
+            ...(scenarios.find((s) => s.discountPercent != null)
+              ? { customDiscountPercent: scenarios.find((s) => s.discountPercent != null).discountPercent }
+              : {}),
+          },
+        };
+      }
+    } else {
+      const draft = homepageDraft || {
+        model: facts.find((f) => f.field === 'vehicleInterest')?.value?.model
+          || facts.find((f) => f.field === 'vehicleInterest')?.label
+          || workingLead.vehicle?.model
+          || null,
+        modelKey: facts.find((f) => f.field === 'vehicleInterest')?.value?.modelKey || null,
+        configurationAttached: facts.some((f) => f.field === 'configurationAttached'),
+        customerType: facts.find((f) => f.field === 'customerType')?.value || 'private',
+        commercialScenarios: scenarioFact.value,
+        openQuestions: facts
+          .filter((f) => f.field === 'deliveryTime')
+          .map((f) => ({
+            id: 'delivery_time',
+            field: 'deliveryTime',
+            label: f.label || 'Lieferzeit beantworten',
+            question: f.value?.question || 'Wie ist die Lieferzeit?',
+          })),
+        hasDualScenarios: true,
+      };
+      const appliedHome = applyHomepageInquiryToLead(nextLead, draft, { createOfferShells: true });
+      if (appliedHome.ok) {
+        nextLead = appliedHome.lead;
+      }
     }
   }
 
@@ -1885,7 +2018,82 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     a.type === SELLER_TURN_INTENTS.PREPARE_OFFER
     && (a.payload?.offerDraftId || a.payload?.batch)
   ));
-  if (offerAction?.payload?.batch && Array.isArray(offerAction.payload.offers)) {
+  const multiFactForDrafts = facts.find((f) => (
+    f.field === 'vehicleInterestMulti' && !f.consultationCandidates
+  ));
+  const multiEntriesForDrafts = Array.isArray(multiFactForDrafts?.value)
+    ? multiFactForDrafts.value
+    : [];
+  const tracksForDrafts = listCustomerVehicleTracks(nextLead);
+  const shouldCreateMultiOfferDrafts = multiEntriesForDrafts.length >= 2
+    && tracksForDrafts.length >= 2
+    && (
+      multiFactForDrafts?.offerAlternatives === true
+      || multiEntriesForDrafts.some((e) => e?.offerAlternative)
+      || multiEntriesForDrafts.every((e) => String(e?.modelKey || '').toLowerCase()
+        === String(multiEntriesForDrafts[0]?.modelKey || '').toLowerCase())
+    );
+
+  if (shouldCreateMultiOfferDrafts) {
+    for (let i = 0; i < multiEntriesForDrafts.length; i += 1) {
+      const entry = multiEntriesForDrafts[i];
+      const modelKey = String(entry?.modelKey || entry?.model || '')
+        .toLowerCase()
+        .replace(/^kia\s+/i, '')
+        .trim();
+      if (!modelKey) continue;
+      const entryColor = String(entry.color || entry.preferredColor || '').toLowerCase();
+      const track = tracksForDrafts.find((tr) => {
+        const color = String(tr.preferredColor || tr.colorLabel || '').toLowerCase();
+        return String(tr.modelKey || '').toLowerCase() === modelKey
+          && (!entryColor || !color || color.includes(entryColor) || entryColor.includes(color));
+      }) || tracksForDrafts[i] || null;
+      const scopedFacts = [
+        {
+          field: 'vehicleInterest',
+          value: entry,
+          label: entry.label || `Kia ${modelKey.toUpperCase()}`,
+        },
+        ...facts.filter((f) => (
+          f.field !== 'vehicleInterest'
+          && f.field !== 'vehicleInterestMulti'
+          && f.field !== 'colorPreference'
+          && f.field !== 'equipmentWish'
+          && f.field !== 'unresolvedNote'
+          && f.field !== 'color'
+        )),
+        ...(entry.package || entry.equipmentPackage
+          ? [{
+            field: 'equipmentWish',
+            label: entry.package || entry.equipmentPackage,
+            value: {
+              label: entry.package || entry.equipmentPackage,
+              id: /wärm|waerm|heat/i.test(String(entry.package || ''))
+                ? 'heat_pump'
+                : null,
+            },
+          }]
+          : []),
+      ];
+      const ensured = ensureConceptOfferDraftFromCapture(nextLead, scopedFacts, {
+        sellerInput: turn.sellerInput || '',
+        modelKey,
+        createNewAlternative: true,
+        force: true,
+        vehicleTrackId: track?.id || null,
+      });
+      nextLead = ensured.lead;
+      if (ensured.offerDraftId && track?.id) {
+        const od = getOfferDraftById(nextLead, ensured.offerDraftId);
+        if (od) {
+          nextLead = upsertOfferDraftOnLead(nextLead, {
+            ...od,
+            vehicleTrackId: track.id,
+          });
+        }
+      }
+    }
+  } else if (offerAction?.payload?.batch && Array.isArray(offerAction.payload.offers)) {
     for (const od of offerAction.payload.offers) {
       if (!od?.offerDraftId) continue;
       nextLead = upsertOfferDraftOnLead(nextLead, od, {
@@ -1904,6 +2112,19 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
       }, {
         changedFields: offerAction.payload.lastChangedFields || [],
       });
+      // PDF/Calculator: autoritativer Draft → genau ein VehicleOffer (idempotent by offerDraftId)
+      if (
+        offerAction.payload.fromPdf
+        || offerAction.payload.rateAuthority === 'authoritative'
+        || bundle.offerDraft.rateAuthority === 'authoritative'
+      ) {
+        const materialized = maybeMaterializeVehicleOfferAfterDraftUpsert(
+          nextLead,
+          offerAction.payload.offerDraftId,
+          { sellerInput: turn.sellerInput || '' },
+        );
+        if (materialized.ok) nextLead = materialized.lead;
+      }
     }
   } else if (
     // Clever Agent V1: Capture mit genug Identity/Konditionen → Concept-Draft (rate null)
@@ -1917,6 +2138,8 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
           || f.field === 'annualMileage'
           || f.field === 'colorPreference'
           || f.field === 'motorPreference'
+          || f.field === 'commercialScenarios'
+          || f.field === 'downPayment'
         )
       ))
       || Boolean(nextLead?.wish?.paymentType || nextLead?.wish?.downPayment

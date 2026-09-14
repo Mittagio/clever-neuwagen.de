@@ -48,6 +48,7 @@ const OFFER_REACTION_TYPES = new Set([
   INBOX_EVENT_TYPES.OFFER_INTERESTED,
   INBOX_EVENT_TYPES.OFFER_OPENED,
   INBOX_EVENT_TYPES.OFFER_DECLINED,
+  INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST,
 ]);
 
 /** Arbeitswert-Priorität (niedriger = höher) */
@@ -59,6 +60,7 @@ const WORK_PRIORITY = {
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: 10,
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: 12,
   [INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST]: 8,
+  [INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST]: 5,
   [INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED]: 20,
   [INBOX_EVENT_TYPES.DOCUMENT_UPLOADED]: 20,
   [INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED]: 20,
@@ -77,6 +79,7 @@ const SIGNAL_LABELS = {
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: 'Rückrufwunsch',
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: 'Frag Clever',
   [INBOX_EVENT_TYPES.STOCK_VEHICLE_REQUEST]: 'Bestandsfahrzeug-Anfrage',
+  [INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST]: 'Änderungswunsch',
   [INBOX_EVENT_TYPES.OFFER_INTERESTED]: 'Interesse markiert',
   [INBOX_EVENT_TYPES.OFFER_OPENED]: 'Angebot geöffnet',
   [INBOX_EVENT_TYPES.OFFER_DECLINED]: 'Angebot abgelehnt',
@@ -93,10 +96,11 @@ const NEXT_STEP_BY_TYPE = {
   [INBOX_EVENT_TYPES.CUSTOMER_MESSAGE]: { step: 'Nachricht beantworten', action: 'Antworten' },
   [INBOX_EVENT_TYPES.CONTACT_REQUESTED]: { step: 'Kunden kontaktieren', action: 'Antworten' },
   [INBOX_EVENT_TYPES.ADVISOR_CONTACT_REQUEST]: { step: 'Frage beantworten', action: 'Antworten' },
+  [INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST]: { step: 'Angebot anpassen', action: 'Angebot anpassen' },
   [INBOX_EVENT_TYPES.SELF_DISCLOSURE_SUBMITTED]: { step: 'Selbstauskunft prüfen', action: 'Prüfen' },
   [INBOX_EVENT_TYPES.DOCUMENT_UPLOADED]: { step: 'Unterlage ansehen', action: 'Prüfen' },
   [INBOX_EVENT_TYPES.DOCUMENT_LINK_COMPLETED]: { step: 'Unterlagen prüfen', action: 'Prüfen' },
-  [INBOX_EVENT_TYPES.OFFER_INTERESTED]: { step: 'Nachfassen', action: 'Nachfassen' },
+  [INBOX_EVENT_TYPES.OFFER_INTERESTED]: { step: 'Abschluss vorbereiten', action: 'Abschluss vorbereiten' },
   [INBOX_EVENT_TYPES.OFFER_OPENED]: { step: 'Nachfassen vorbereiten', action: 'Nachfassen' },
   [INBOX_EVENT_TYPES.OFFER_DECLINED]: { step: 'Alternative anbieten', action: 'Nachfassen' },
   [INBOX_EVENT_TYPES.LEARNING_REQUEST_CREATED]: { step: 'Anfrage prüfen', action: 'Prüfen' },
@@ -146,7 +150,8 @@ export function computeInboxWarmth(items = []) {
   if (hasQuestion && (hasInterest || hasDocument || urgent)) {
     return INBOX_WARMTH.URGENT;
   }
-  if (urgent || types.has(INBOX_EVENT_TYPES.CONTACT_REQUESTED)) {
+  if (urgent || types.has(INBOX_EVENT_TYPES.CONTACT_REQUESTED)
+    || types.has(INBOX_EVENT_TYPES.OFFER_CHANGE_REQUEST)) {
     return INBOX_WARMTH.URGENT;
   }
   if (hasInterest && hasQuestion) return INBOX_WARMTH.HOT;
