@@ -672,6 +672,95 @@ button.sur-card__chip {
   margin-top: 0.55rem;
 }
 
+.sur-card__check--identity {
+  background: rgba(15, 23, 42, 0.03);
+  border-color: rgba(15, 23, 42, 0.08);
+  padding: 0.55rem 0.7rem;
+}
+
+.sur-card__identity-fact {
+  position: relative;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.45rem 0.65rem;
+}
+
+.sur-card__identity-label {
+  font-size: 0.7rem;
+  font-weight: 650;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #6b7280;
+}
+
+.sur-card__identity-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin: 0;
+  padding: 0.35rem 0.7rem;
+  border-radius: 999px;
+  border: 1px solid rgba(15, 23, 42, 0.14);
+  background: #fff;
+  color: #0f172a;
+  font-size: 0.875rem;
+  font-weight: 550;
+  line-height: 1.25;
+  cursor: pointer;
+}
+
+.sur-card__identity-chip.is-open,
+.sur-card__identity-chip:hover {
+  border-color: rgba(15, 23, 42, 0.28);
+}
+
+.sur-card__identity-swatch {
+  width: 0.75rem;
+  height: 0.75rem;
+  border-radius: 999px;
+  background: #cbd5e1;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  flex: 0 0 auto;
+}
+
+.sur-card__identity-popover {
+  position: absolute;
+  z-index: 8;
+  top: calc(100% + 0.35rem);
+  left: 0;
+  min-width: min(100%, 16rem);
+  max-height: 14rem;
+  overflow: auto;
+  margin: 0;
+  padding: 0.35rem;
+  list-style: none;
+  border-radius: 10px;
+  border: 1px solid rgba(15, 23, 42, 0.12);
+  background: #fff;
+  box-shadow: 0 10px 28px rgba(15, 23, 42, 0.12);
+}
+
+.sur-card__identity-option {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  gap: 0.5rem;
+  margin: 0;
+  padding: 0.45rem 0.55rem;
+  border: 0;
+  border-radius: 8px;
+  background: transparent;
+  color: #0f172a;
+  font-size: 0.875rem;
+  text-align: left;
+  cursor: pointer;
+}
+
+.sur-card__identity-option:hover {
+  background: rgba(15, 23, 42, 0.05);
+}
+
 .sur-card__chips--always {
   display: flex;
 }

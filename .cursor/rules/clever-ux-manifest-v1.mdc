@@ -1,0 +1,44 @@
+---
+description: Clever UX Manifest V1 – Seller Sales Workspace; Kontext vor Feldern; eine Primary; 3-Sekunden-Test
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: CLEVER UX MANIFEST V1
+
+**Doc:** `docs/CLEVER_UX_MANIFEST_V1.md` (Quelle der Wahrheit)
+
+## Leitlinie
+
+> Der Verkäufer soll nicht das CRM bedienen. Clever soll das CRM für den Verkäufer bedienen.
+
+Vertikaler Sales Assistant (Autohandel) – kein CRM mit KI-Anstrich.
+
+## Vor jeder Seller-UI-Änderung
+
+1. Muss der Verkäufer das **jetzt** sehen?
+2. Kontext oder Rohdaten? → Zusammenfassung statt Felder
+3. Genau **eine** fachliche Primary (`determineNextBestSellerAction`)?
+4. Unsicherheit **lokal** (Partial Success)?
+5. Details progressiv? Editing nicht Default?
+6. Besteht der **3-Sekunden-Test** (Stand / Wunsch / offen / Next)?
+
+Wenn nein → erst vereinfachen. Keine Architektur-/Nav-/NBA-Neuentwicklung „für UX“.
+
+## Screen-Muster
+
+Briefing → eine Primary → lokale Offenpunkte → Composer/Utility → Details nachgelagert
+
+## Anti-Patterns (Normalzustand)
+
+Chip-Wolken · Excel-Feeling · Fact-Review-Default · Confirm/Apply/Discard · Badge-Rauschen · gleich starke Buttons · KI-Laborsprache · Doppel-Infos · Pipeline-Zähler im Kundenkontext · Editing-Default · separates KI-Panel · parallele Choice-/Composer-Wahrheiten (→ Dual Input / Single State)
+
+## Nicht bauen
+
+Custom-Object-CRM · Data-Cloud-Klon · Marketing-Suite · Schema-Builder · Forecast-Plattform · Pipeline als Akte-Hauptfläche · AI-Credits · Dialer-first CRM
+
+## Abgrenzung
+
+- Kundendialog / Zwei Welten → Vier Aufgaben + Produktprinzipien + Customer Intake Manifest  
+- Architektur-Freezes (Working Draft, Zero-Loss, Vehicle Identity, Capture-then-Offer) bleiben  
+- Dual Input / Single State → `docs/CLEVER_DUAL_INPUT_SINGLE_STATE.md` · Rule `clever-dual-input-single-state.mdc`  
+- Optik → UI Filigree / Responsive – Manifest steuert **Hierarchie**, kein neues Visual System

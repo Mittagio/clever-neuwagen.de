@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { isQuietIntakeReview } from '../../services/cleverSeller/quietIntakeReview.js';
 import { GENERIC_CONFIRMATION_WARNING_RE } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { isLiveEditableField, resolveLiveEditEditor } from '../../services/cleverSeller/liveEditFactMeta.js';
@@ -353,6 +353,8 @@ export default function SellerUniversalReviewCard({
   const [showCollapsedContext, setShowCollapsedContext] = useState(false);
   const [editingChip, setEditingChip] = useState(null);
   const [editingKey, setEditingKey] = useState(null);
+  const [identityChoiceOpen, setIdentityChoiceOpen] = useState(false);
+  const identityChoiceRef = useRef(null);
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const body = useMemo(() => pickPrimaryBody(model), [model]);
@@ -366,10 +368,23 @@ export default function SellerUniversalReviewCard({
   const offerMsg = sections.find((s) => s.kind === 'offer_and_message_review');
   const offerAppt = sections.find((s) => s.kind === 'offer_and_appointment_review');
   const offerPrep = sections.find((s) => (
-    s.kind === 'offer_prepare' || s.kind === 'offer_incomplete'
+    s.kind === 'offer_prepare'
+    || s.kind === 'offer_incomplete'
+    || s.kind === 'offer_preparation_handoff'
+    || s.kind === 'application_prepare_handoff'
+    || s.kind === 'offer_change_handoff'
   ));
   const offerReview = model?.offerReview || null;
+  const isOfferPrepHandoff = model?.reviewType === 'offer_preparation_handoff'
+    || offerPrep?.kind === 'offer_preparation_handoff';
+  const isApplicationPrepareHandoff = model?.reviewType === 'application_prepare_handoff'
+    || offerPrep?.kind === 'application_prepare_handoff';
+  const isOfferChangeHandoff = model?.reviewType === 'offer_change_handoff'
+    || offerPrep?.kind === 'offer_change_handoff';
   const isOfferReview = Boolean(offerReview)
+    || isOfferPrepHandoff
+    || isApplicationPrepareHandoff
+    || isOfferChangeHandoff
     || model?.reviewType === 'offer_and_message_review'
     || model?.reviewType === 'offer_and_appointment_review'
     || model?.reviewType === 'offer_prepare'
@@ -601,9 +616,66 @@ export default function SellerUniversalReviewCard({
   const compactBtnActions = (isCompactReview && !useBriefingUi)
     ? [...compactFromPrimary, ...secondaryReviewActions]
       .filter((action) => (
-        isOfferReview || action?.action !== 'toggle_context'
+        action?.action !== 'toggle_context'
+        && action?.action !== 'discard'
+        && action?.id !== 'discard'
+        && !(isOfferReview && action?.action === 'clarify_offer_identity')
       ))
     : [];
+  // Offer Review: PDF sekundär. Prep-Handoff: PDF Primary, Manual Secondary.
+  const offerPrimaryBtnActions = isOfferPrepHandoff
+    ? mappedPrimaryBtnActions.slice(0, 1)
+    : isOfferReview
+      ? mappedPrimaryBtnActions
+        .filter((a) => a?.action !== 'clarify_offer_identity' && a?.action !== 'upload_pdf')
+        .slice(0, 1)
+      : mappedPrimaryBtnActions;
+  const offerCompactBtnActions = isOfferPrepHandoff
+    ? [
+      ...secondaryReviewActions.filter((a) => (
+        a?.action === 'open_offer_manual' || a?.action === 'dismiss_offer_prep'
+      )),
+      ...compactBtnActions.filter((a) => (
+        a?.action === 'open_offer_manual' || a?.action === 'dismiss_offer_prep'
+      )),
+    ].filter((a, i, arr) => arr.findIndex((x) => x.id === a.id || x.action === a.action) === i)
+    : isOfferReview
+      ? [
+        ...compactBtnActions.filter((a) => a?.action === 'upload_pdf'),
+        ...mappedPrimaryBtnActions
+          .filter((a) => a?.action === 'upload_pdf' && a?.tone === 'compact'),
+      ].filter((a, i, arr) => arr.findIndex((x) => x.id === a.id || x.action === a.action) === i)
+      : compactBtnActions;
+  const localClarify = offerReview?.localClarify
+    || offerPrep?.localClarify
+    || null;
+  const offerOpenLine = offerReview?.openLine
+    || (isOfferReview ? offerPrep?.clarifyPrompt : null)
+    || null;
+  const identityChoices = Array.isArray(localClarify?.choices) ? localClarify.choices : [];
+  const hasIdentityChoices = identityChoices.length > 0;
+
+  useEffect(() => {
+    setIdentityChoiceOpen(false);
+  }, [localClarify?.title, localClarify?.field, model?.offerDraftId]);
+
+  useEffect(() => {
+    if (!identityChoiceOpen) return undefined;
+    function handlePointer(event) {
+      if (identityChoiceRef.current && !identityChoiceRef.current.contains(event.target)) {
+        setIdentityChoiceOpen(false);
+      }
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape') setIdentityChoiceOpen(false);
+    }
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [identityChoiceOpen]);
 
   return (
     <article
@@ -616,7 +688,7 @@ export default function SellerUniversalReviewCard({
       ].filter(Boolean).join(' ')}
       aria-live="polite"
     >
-      {!isSilentIntake || settled || resolvedStatusLabel ? (
+      {!isOfferReview && (!isSilentIntake || settled || resolvedStatusLabel) ? (
         <header className="sur-card__meta">
           {!isSilentIntake ? (
             <span className="sur-card__when">{settled ? 'zuletzt' : 'gerade eben'}</span>
@@ -690,6 +762,11 @@ export default function SellerUniversalReviewCard({
                       {offerReview.listPriceLine}
                     </p>
                   ) : null}
+                  {offerOpenLine ? (
+                    <p className="sur-card__hero-sub sur-card__hero-sub--muted">
+                      {offerOpenLine}
+                    </p>
+                  ) : null}
                 </>
               ) : heroSubtitle ? (
                 <p className="sur-card__hero-sub">{heroSubtitle}</p>
@@ -725,7 +802,96 @@ export default function SellerUniversalReviewCard({
             </button>
           ) : null}
         </div>
+      ) : (isOfferReview && localClarify) ? (
+        <div
+          className={`sur-card__check sur-card__check--local${hasIdentityChoices ? ' sur-card__check--identity' : ''}`}
+          role="status"
+        >
+          {hasIdentityChoices ? (
+            <div className="sur-card__identity-fact" ref={identityChoiceRef}>
+              <span className="sur-card__identity-label">
+                {localClarify.field === 'colorPreference' || localClarify.slotId === 'offer_color'
+                  ? 'Farbe'
+                  : (localClarify.title || 'Angabe')}
+              </span>
+              <button
+                type="button"
+                className={`sur-card__identity-chip${identityChoiceOpen ? ' is-open' : ''}`}
+                aria-expanded={identityChoiceOpen}
+                aria-haspopup="listbox"
+                onClick={() => setIdentityChoiceOpen((open) => !open)}
+              >
+                {localClarify.showSwatch ? (
+                  <span className="sur-card__identity-swatch" aria-hidden />
+                ) : null}
+                <span>{localClarify.chipLabel || localClarify.title || 'Noch auswählen'}</span>
+              </button>
+              {identityChoiceOpen ? (
+                <ul
+                  className="sur-card__identity-popover"
+                  role="listbox"
+                  aria-label={`${localClarify.title || 'Angabe'} wählen`}
+                >
+                  {identityChoices.map((choice) => (
+                    <li key={choice.id || choice.label}>
+                      <button
+                        type="button"
+                        role="option"
+                        className="sur-card__identity-option"
+                        onClick={() => {
+                          setIdentityChoiceOpen(false);
+                          handleReviewAction({
+                            id: `identity-${choice.id || choice.label}`,
+                            label: choice.label,
+                            action: 'apply_offer_identity_choice',
+                            field: localClarify.field || 'colorPreference',
+                            slotId: localClarify.slotId || null,
+                            choiceId: choice.id || null,
+                            insertText: choice.insertText || choice.label,
+                            swatch: choice.swatch || null,
+                          });
+                        }}
+                      >
+                        {choice.swatch ? (
+                          <span
+                            className="sur-card__identity-swatch"
+                            style={{ background: choice.swatch }}
+                            aria-hidden
+                          />
+                        ) : null}
+                        <span>{choice.label}</span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : null}
+            </div>
+          ) : (
+            <>
+              <p className="sur-card__check-title">{localClarify.title}</p>
+              {localClarify.body ? (
+                <p className="sur-card__check-body">{localClarify.body}</p>
+              ) : null}
+              {localClarify.actionLabel ? (
+                <button
+                  type="button"
+                  className="sur-card__btn sur-card__btn--secondary sur-card__check-btn"
+                  onClick={() => handleReviewAction({
+                    id: 'local_clarify',
+                    label: localClarify.actionLabel,
+                    action: localClarify.action,
+                    field: localClarify.field,
+                    insertText: localClarify.insertText,
+                  })}
+                >
+                  {localClarify.actionLabel}
+                </button>
+              ) : null}
+            </>
+          )}
+        </div>
       ) : (() => {
+        if (isOfferReview) return null;
         const sellerWarnings = (Array.isArray(model?.warnings) ? model.warnings : [])
           .filter((w) => w && !GENERIC_CONFIRMATION_WARNING_RE.test(String(w)))
           .slice(0, 3);
@@ -930,7 +1096,7 @@ export default function SellerUniversalReviewCard({
         isCompactReview ? (
           <div className="sur-card__actions" role="group" aria-label="Review-Aktionen">
             <div className="sur-card__actions-main">
-              {mappedPrimaryBtnActions.map((action, index) => {
+              {offerPrimaryBtnActions.map((action, index) => {
                 const tone = actionTone(action, index);
                 return (
                   <button
@@ -945,14 +1111,10 @@ export default function SellerUniversalReviewCard({
                 );
               })}
             </div>
-            {compactBtnActions.length > 0 ? (
+            {offerCompactBtnActions.length > 0 ? (
               <div className="sur-card__actions-more">
-                {compactBtnActions.map((action) => {
-                  const label = action.action === 'toggle_context'
-                    ? (showCollapsedContext
-                      ? (isOfferReview ? 'Erkannte Angaben ausblenden' : 'Kontext ausblenden')
-                      : (isOfferReview ? 'Erkannte Angaben anzeigen' : (action.label || 'Kontext anzeigen')))
-                    : action.label;
+                {offerCompactBtnActions.map((action) => {
+                  const label = action.label;
                   return (
                     <button
                       key={action.id || action.label}
@@ -993,8 +1155,8 @@ export default function SellerUniversalReviewCard({
         )
       ) : null}
 
-      {showCollapsedContext && collapsedGroups.length ? (
-        <ul className="sur-card__facts sur-card__facts--compact" aria-label="Erkannte Angaben">
+      {showCollapsedContext && collapsedGroups.length && !isOfferReview ? (
+        <ul className="sur-card__facts sur-card__facts--compact" aria-label="Kontext">
           {collapsedGroups.map((group) => (
             <li key={group.id || group.title} className="sur-card__fact">
               <span className="sur-card__fact-title">{group.title}</span>
@@ -1010,17 +1172,6 @@ export default function SellerUniversalReviewCard({
             </li>
           ))}
         </ul>
-      ) : null}
-
-      {isOfferReview && hasCollapsedFacts
-        && !compactBtnActions.some((a) => a.action === 'toggle_context') ? (
-        <button
-          type="button"
-          className="sur-card__text-link"
-          onClick={() => setShowCollapsedContext((v) => !v)}
-        >
-          {showCollapsedContext ? 'Erkannte Angaben ausblenden' : 'Erkannte Angaben anzeigen'}
-        </button>
       ) : null}
 
       {historyHit && onOpenHistoryHit ? (
@@ -1079,8 +1230,8 @@ export default function SellerUniversalReviewCard({
         </p>
       ) : null}
 
-      {/* Quiet Intake: Primary/Secondary reichen – Toolbar nur Lärm/Whitespace */}
-      {!isSilentIntake || settled ? (
+      {/* Offer-Normalzustand: keine Review-Toolbar (Übernehmen/Branch/Kopieren) */}
+      {(!isOfferReview && (!isSilentIntake || settled)) ? (
         <div className="sur-card__toolbar" role="group" aria-label="Clever Aktionen">
           {!settled && typeof onMaybe === 'function' ? (
             <button

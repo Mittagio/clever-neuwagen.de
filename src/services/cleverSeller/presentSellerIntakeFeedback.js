@@ -140,6 +140,32 @@ export function presentIntakeNextStepLabel(next = null) {
 }
 
 /**
+ * Compact Confirm: Next-Step-Zeilen entfernen, wenn die Primary als CTA-Button erscheint.
+ * @param {string} message
+ */
+export function stripNextStepLinesFromConfirmMessage(message = '') {
+  return String(message || '')
+    .replace(/\n*\s*Nächster Schritt:\s*\n?[^\n]*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+/**
+ * CTA-Action für Compact-Confirm Primary (Dashboard / Feed).
+ * @param {object|null} next
+ * @returns {'prepare_offer'|'consultation'|null}
+ */
+export function resolveIntakeNextStepCtaAction(next = null) {
+  if (!next) return null;
+  const id = String(next.id || '');
+  if (id === 'capture_then_consult') return 'consultation';
+  const label = String(next.label || next.cta || '').trim();
+  if (/Fahrzeuge finden|Fahrzeugberatung|Beratung/i.test(label)) return 'consultation';
+  if (id === 'capture_then_offer' || /Angebot/i.test(label)) return 'prepare_offer';
+  return null;
+}
+
+/**
  * Compact Confirmation für Composer/Feed.
  * @param {object} turn
  * @returns {{

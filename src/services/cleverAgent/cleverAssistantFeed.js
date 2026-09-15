@@ -2,6 +2,11 @@
  * Clever 2.0 Sprint 3 – Chat-native Feed-Helfer (bestehende Clever-Card-Patterns).
  */
 import { postCleverAssistFeedCard } from '../crm/sharedWorkspaceService.js';
+import {
+  presentIntakeNextStepLabel,
+  resolveIntakeNextStepCtaAction,
+  stripNextStepLinesFromConfirmMessage,
+} from '../cleverSeller/presentSellerIntakeFeedback.js';
 import { CLEVER_RESPONSE_KIND } from './cleverAssistantResponse.js';
 
 /**
@@ -83,24 +88,44 @@ export function createRememberUndoToken() {
 
 /**
  * Payload für Clever Feed-Karte aus Response Policy (+ optional Context-Switch-CTA).
- * @param {{ policy?: object, agentResult?: object, contextSwitch?: object|null, undoToken?: string|null }} opts
+ * @param {{ policy?: object, agentResult?: object, contextSwitch?: object|null, undoToken?: string|null, leadIdHint?: string|null }} opts
  */
 export function buildAssistantFeedCardOptions({
   policy = null,
   agentResult = null,
   contextSwitch = null,
   undoToken = null,
+  leadIdHint = null,
 } = {}) {
   const kind = policy?.kind || CLEVER_RESPONSE_KIND.DIRECT_ANSWER;
   const chips = Array.isArray(policy?.chips) ? policy.chips.filter(Boolean).slice(0, 8) : [];
-  const text = String(policy?.message || agentResult?.message || '').trim();
+  let text = String(policy?.message || agentResult?.message || '').trim();
   if (!text) return null;
 
   const openLeadId = contextSwitch?.leadId
+    || leadIdHint
     || (agentResult?.suggestedActions || []).find((a) => a.action === 'open_customer' && a.leadId)?.leadId
     || null;
   const openLabel = (agentResult?.suggestedActions || []).find((a) => a.action === 'open_customer')?.label
     || (contextSwitch?.name ? `${contextSwitch.name} öffnen` : null);
+
+  const nextStep = policy?.nextStep || null;
+  const nextLabel = presentIntakeNextStepLabel(nextStep);
+  const nextAction = resolveIntakeNextStepCtaAction(nextStep);
+
+  // Compact Confirm: Next-Step als Primary-CTA (nicht nur Textzeile)
+  const preferNextStepCta = Boolean(
+    nextLabel
+    && nextAction
+    && (
+      kind === CLEVER_RESPONSE_KIND.COMPACT_CONFIRMATION
+      || nextAction === 'prepare_offer'
+      || nextAction === 'consultation'
+    ),
+  );
+  if (preferNextStepCta) {
+    text = stripNextStepLinesFromConfirmMessage(text) || text;
+  }
 
   const title = kind === CLEVER_RESPONSE_KIND.CLARIFICATION
     ? '✨ Clever · Rückfrage'
@@ -114,9 +139,14 @@ export function buildAssistantFeedCardOptions({
     chips,
     undoAvailable,
     undoToken: undoAvailable ? (undoToken || null) : null,
-    ctaLabel: openLeadId ? (openLabel || 'Akte öffnen') : null,
-    ctaAction: openLeadId ? 'open_customer' : null,
-    leadId: openLeadId,
+    ctaLabel: preferNextStepCta
+      ? nextLabel
+      : (openLeadId ? (openLabel || 'Akte öffnen') : null),
+    ctaAction: preferNextStepCta
+      ? nextAction
+      : (openLeadId ? 'open_customer' : null),
+    leadId: openLeadId || null,
+    nextStep: nextStep || null,
   };
 }
 

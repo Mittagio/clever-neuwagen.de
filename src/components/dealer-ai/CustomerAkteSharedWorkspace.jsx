@@ -19,7 +19,16 @@ import {
   createProgressHintScheduler,
 } from '../../services/cleverAgent/cleverProgressHint.js';
 import { CleverChatMessage } from '../chat/WorkspaceChatCards.jsx';
+import { presentIntakeNextStepLabel } from '../../services/cleverSeller/presentSellerIntakeFeedback.js';
 import { buildKundenaktePath } from '../../services/leadAkteEntry.js';
+
+/** Compact Confirm: Next-Step-Zeilen entfernen, wenn Stage die Primary trägt. */
+function stripNextStepLinesFromConfirmMessage(message = '') {
+  return String(message || '')
+    .replace(/\n*\s*Nächster Schritt:\s*\n?[^\n]*/gi, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
 import {
   MESSAGE_KIND,
   sendCleverChannelMessage,
@@ -85,6 +94,7 @@ import {
   shouldShowUniversalReview,
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
+import { applyOfferIdentityChoiceToSellerTurn } from '../../services/cleverSeller/applyOfferIdentityChoice.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { runComposerScreenshotAttachTurnWithInterpret } from '../../services/cleverSeller/runComposerScreenshotAttachTurn.js';
@@ -245,6 +255,17 @@ export default function CustomerAkteSharedWorkspace({
   workspaceSlot = null,
   /** Optional: konkreter Clever-Schritt statt Empty-Recommend (Golden Moment / Empfiehlt) */
   cleverStageSlot = null,
+  /** Slim PDF-first Offer-Prep (NBA prepare_offer) – Presenter über bestehendem Draft */
+  offerPrepHandoffModel = null,
+  onDismissOfferPrepHandoff = null,
+  /** Slim Abschluss-Handoff (NBA application_prepare) – kein Docs-Checklist-First */
+  applicationPrepareHandoffModel = null,
+  onDismissApplicationPrepareHandoff = null,
+  onOpenUnterlagenFromHandoff = null,
+  /** Quiet Change Diff (NBA modify_offer) */
+  offerChangeHandoffModel = null,
+  onDismissOfferChangeHandoff = null,
+  onApplyOfferChangeHandoff = null,
   /** Soft-Labels aus Kundenbild für kontextuelle Next-Step-Copy */
   cleverHintLabels = null,
   scrollToMessageId = null,
@@ -252,6 +273,11 @@ export default function CustomerAkteSharedWorkspace({
   onAttachOffer = null,
   onAttachDocument = null,
   onFocusFeedMessage = null,
+  /**
+   * Compact-Confirm Next-Step ausführen (NBA / prepare_offer), wenn Stage fehlt
+   * oder Confirm-CTA geklickt wird.
+   */
+  onCompactNextStep = null,
 }) {
   const { leads: leadsFromContext = [] } = useLeads();
   const navigate = useNavigate();
@@ -601,12 +627,17 @@ export default function CustomerAkteSharedWorkspace({
         .filter(Boolean)
         .slice(0, 8);
     const undoToken = createRememberUndoToken();
+    const nextStep = options.nextStep
+      || turn?.captureNextStep
+      || turn?.uiEffects?.captureNextStep
+      || null;
     setRememberUndo({
       previousLead,
       leadId: lead.id,
       undoToken,
       message: options.message || null,
       chips: labels,
+      nextStep,
     });
     onRememberApplied?.({ labels, lead: applied.lead, zeroLoss: summary || null });
     return { ok: true, undoToken, lead: applied.lead };
@@ -1042,6 +1073,7 @@ export default function CustomerAkteSharedWorkspace({
         const remembered = applyRememberWithUndo(turn, {
           facts: turn.rememberDecision.safeFacts,
           message: policy.message,
+          nextStep: policy.nextStep || turn.captureNextStep || null,
         });
         if (remembered?.lead) {
           setAgentWorkingMemory((prev) => {
@@ -2098,7 +2130,65 @@ export default function CustomerAkteSharedWorkspace({
   }
 
   function handleUniversalReviewAction(action) {
-    if (!action || !universalTurn) return;
+    if (!action) return;
+
+    // Quiet Change Diff
+    if (action.action === 'apply_offer_change' || action.id === 'apply_offer_change') {
+      onApplyOfferChangeHandoff?.(action);
+      return;
+    }
+    if (action.action === 'dismiss_offer_change' || action.id === 'dismiss_offer_change') {
+      onDismissOfferChangeHandoff?.();
+      return;
+    }
+
+    // Slim Application-Prepare-Handoff (ohne universalTurn)
+    if (action.action === 'seed_application_prepare' || action.id === 'seed_application_prepare') {
+      const seed = String(action.seedDraft || 'Bereite den Leasingantrag vor.').trim();
+      onDismissApplicationPrepareHandoff?.();
+      setDraft(seed);
+      setFeedback('Antrag im Composer – Text anpassen und senden/notieren');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+    if (action.action === 'open_unterlagen' || action.id === 'open_unterlagen') {
+      onDismissApplicationPrepareHandoff?.();
+      onOpenUnterlagenFromHandoff?.();
+      return;
+    }
+    if (action.action === 'dismiss_application_prepare' || action.id === 'dismiss_application_prepare') {
+      onDismissApplicationPrepareHandoff?.();
+      return;
+    }
+
+    // Slim Prep-Handoff: CTAs ohne universalTurn (Routing über bestehenden Draft)
+    if (action.action === 'open_offer_manual' || action.id === 'open_offer_manual') {
+      const draftId = action.offerDraftId
+        || offerPrepHandoffModel?.offerDraftId
+        || lead?.crm?.cleverWorkingState?.currentOfferDraftId
+        || null;
+      onDismissOfferPrepHandoff?.();
+      if (draftId && openHandoffForOfferDraftId(draftId, '')) return;
+      onOpenOffer?.();
+      return;
+    }
+    if (action.action === 'dismiss_offer_prep' || action.id === 'dismiss_offer_prep') {
+      onDismissOfferPrepHandoff?.();
+      return;
+    }
+
+    if (!universalTurn && (action.action === 'upload_pdf' || action.id === 'upload_pdf')) {
+      const input = document.querySelector('.sw-composer__file');
+      if (input && typeof input.click === 'function') {
+        input.click();
+        return;
+      }
+      setFeedback('Bitte PDF über + im Composer wählen.');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
+
+    if (!universalTurn) return;
     if (action.action === 'discard') {
       handleDismissAssist();
       return;
@@ -2221,6 +2311,29 @@ export default function CustomerAkteSharedWorkspace({
     if (action.action === 'enter_rate' || action.id === 'enter_rate') {
       setDraft('Monatsrate ');
       focusComposer();
+      return;
+    }
+    if (action.action === 'apply_offer_identity_choice') {
+      const applied = applyOfferIdentityChoiceToSellerTurn(universalTurn, {
+        id: action.choiceId || action.id,
+        label: action.label || action.insertText,
+        insertText: action.insertText,
+        field: action.field,
+      }, {
+        lead,
+        field: action.field || 'colorPreference',
+        offerDraftId: action.offerDraftId
+          || offerPrepHandoffModel?.offerDraftId
+          || universalTurn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
+            ?.payload?.offerDraftId
+          || null,
+      });
+      if (applied.lead && typeof onPersistLead === 'function') {
+        onPersistLead(applied.lead);
+      }
+      setUniversalTurn(applied.turn);
+      setDraft('');
+      setFeedback('');
       return;
     }
     if (action.action === 'calc_cash' || action.id === 'calc_cash') {
@@ -2824,23 +2937,38 @@ export default function CustomerAkteSharedWorkspace({
     () => (universalTurn ? buildUniversalReviewModel(universalTurn) : null),
     [universalTurn],
   );
+  const prepReviewModel = !reviewModel
+    ? (offerPrepHandoffModel
+      || applicationPrepareHandoffModel
+      || offerChangeHandoffModel
+      || null)
+    : null;
+  const activeReviewModel = reviewModel || prepReviewModel;
   const composerChips = useMemo(
-    () => resolveComposerChipsForReview(reviewModel),
-    [reviewModel],
+    () => resolveComposerChipsForReview(activeReviewModel),
+    [activeReviewModel],
   );
 
-  // Clever-Tab (hideFeed): Compact Confirmation + Undo im Slot; Chat-Tab nutzt Feed-Card.
+  // Clever-Tab: Compact Confirm darf Stage (NBA Primary) nicht verdecken.
+  // Stage führt; Confirm = Aufnahme + Undo (+ CTA nur wenn keine Stage).
+  const confirmNextLabel = presentIntakeNextStepLabel(rememberUndo?.nextStep) || null;
+  const confirmMessageForStage = stripNextStepLinesFromConfirmMessage(rememberUndo?.message);
   const rememberConfirmSlot = (hideFeed && rememberUndo?.message) ? (
     <div className="cust-akte-workspace__assistant-card">
       <CleverChatMessage
-        text={rememberUndo.message}
+        text={cleverStageSlot ? (confirmMessageForStage || 'Aufgenommen') : rememberUndo.message}
         payload={{
           title: 'Clever',
           responseKind: 'compact_confirmation',
           chips: rememberUndo.chips || [],
           undoAvailable: true,
           undoToken: rememberUndo.undoToken,
+          // CTA nur wenn Stage fehlt – sonst führt CleverEmpfiehlt die Primary
+          ctaLabel: (!cleverStageSlot && confirmNextLabel) ? confirmNextLabel : null,
         }}
+        onCta={(!cleverStageSlot && confirmNextLabel && typeof onCompactNextStep === 'function')
+          ? () => onCompactNextStep(rememberUndo.nextStep)
+          : null}
         onUndo={handleRememberUndo}
         activeUndoToken={rememberUndo.undoToken}
       />
@@ -2859,7 +2987,15 @@ export default function CustomerAkteSharedWorkspace({
     />
   ) : null);
 
-  const attachActionsSlot = attachmentActions?.suggestedActions?.length && !reviewModel ? (
+  /** Clever-Tab: Stage + optional Confirm übereinander – NBA bleibt klickbar */
+  const cleverTabSlot = (hideFeed && cleverStageSlot) ? (
+    <div className="cust-akte-workspace__stage-stack">
+      {rememberConfirmSlot}
+      {cleverStageSlot}
+    </div>
+  ) : null;
+
+  const attachActionsSlot = attachmentActions?.suggestedActions?.length && !activeReviewModel ? (
     <div className="cust-akte-workspace__attach-actions" role="group" aria-label="Dokument-Aktionen">
       {attachmentActions.suggestedActions.map((action) => (
         <button
@@ -2932,7 +3068,7 @@ export default function CustomerAkteSharedWorkspace({
         suggestionChips={composerChips.chips}
         moreSuggestionChips={composerChips.moreChips}
         onSuggestionChip={handleSuggestionChip}
-        hideSuggestionChips={!reviewModel}
+        hideSuggestionChips={!activeReviewModel}
         intentChips={visibleIntentChips}
         moreIntentChips={COMPOSER_INTENT_MORE_CHIPS}
         selectedIntentChipId={selectedIntentChipId}
@@ -2946,7 +3082,8 @@ export default function CustomerAkteSharedWorkspace({
         selectedPurposeId={intentPurpose?.id || null}
         intentModeHint={intentModeHint}
         intentChipTooltips={intentChipTooltips}
-        hideIntentChips={Boolean(reviewModel) || inMessageEdit}
+        intentChipsTone="utility"
+        hideIntentChips={Boolean(activeReviewModel) || inMessageEdit}
         autoGrow={!inMessageEdit}
         reviewSlot={inMessageEdit ? null : (
           reviewModel ? (
@@ -2978,8 +3115,24 @@ export default function CustomerAkteSharedWorkspace({
                 setTimeout(() => setFeedback(''), 2800);
               }}
             />
+          ) : prepReviewModel ? (
+            <SellerUniversalReviewCard
+              model={prepReviewModel}
+              onDismiss={() => {
+                if (prepReviewModel?.reviewType === 'application_prepare_handoff') {
+                  onDismissApplicationPrepareHandoff?.();
+                  return;
+                }
+                if (prepReviewModel?.reviewType === 'offer_change_handoff') {
+                  onDismissOfferChangeHandoff?.();
+                  return;
+                }
+                onDismissOfferPrepHandoff?.();
+              }}
+              onReviewAction={handleUniversalReviewAction}
+            />
           ) : (
-            lastActionSlot
+            cleverTabSlot || lastActionSlot
           )
         )}
         micSlot={(
@@ -3049,7 +3202,7 @@ export default function CustomerAkteSharedWorkspace({
           },
         ]}
         emptyHint={emptyHint}
-        emptySlot={emptySlot}
+        emptySlot={cleverTabSlot ? null : emptySlot}
       />
     </section>
   );

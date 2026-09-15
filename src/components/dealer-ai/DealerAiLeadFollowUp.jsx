@@ -92,7 +92,6 @@ import {
 import {
   markPortfolioSent,
   prepareCustomerOfferPortfolio,
-  validatePortfolioEnVkvForSend,
 } from '../../services/crm/customerOfferPortfolioService.js';
 import { applyPortfolioMailDelivery } from '../../services/mail/mailFlowService.js';
 import {
@@ -2031,14 +2030,6 @@ export default function DealerAiLeadFollowUp({
     if (!result.ok) {
       setToast('Keine versandbereiten Angebote – bitte zuerst Angebote im Angebotsrechner erstellen.');
       setTimeout(() => setToast(''), 4000);
-      return false;
-    }
-
-    const envkvCheck = validatePortfolioEnVkvForSend(result.portfolio.items);
-    if (!envkvCheck.ok) {
-      const labels = envkvCheck.blockers.map((b) => b.label).join(', ');
-      setToast(`${envkvCheck.message} (${labels})`);
-      setTimeout(() => setToast(''), 6000);
       return false;
     }
 

@@ -27,9 +27,10 @@ Clever = sagen/klicken → Clever konfiguriert → Angebot. **Kein Carwow-Konfig
 
 ## UI
 
-Angebot prüfen: oben **drei Fact-Chips** (Modell · Linie · Farbe) mit **Popover-Choices** – **keine Freitext-Linie als Default**. Farbe mit Swatch. Composer und Klick → derselbe State. Bei Identity-Wechsel Rate stale („Rate prüfen“), keine Fake-Neuberechnung. Getrennt: Konditionen. Kein Akte-Hierarchy-Redesign. Kein Carwow-Stepper.
+Angebot prüfen: oben **drei Fact-Chips** (Modell · Linie · Farbe) mit **Popover-Choices** – **keine Freitext-Linie als Default**. Farbe mit Swatch. Composer und Klick → derselbe State (**Dual Input / Single State**). Bei Identity-Wechsel Rate stale („Rate prüfen“), keine Fake-Neuberechnung. Getrennt: Konditionen. Kein Akte-Hierarchy-Redesign. Kein Carwow-Stepper.
 
 ## Code / Doc
 
 - Kern: `src/services/cleverSeller/offerVehicleIdentity.js`
 - Doc: `docs/CLEVER_OFFER_VEHICLE_IDENTITY_FREEZE.md`
+- Cross: `docs/CLEVER_DUAL_INPUT_SINGLE_STATE.md` · Rule `clever-dual-input-single-state.mdc`

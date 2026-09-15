@@ -647,7 +647,16 @@
   font-size: 0.875rem;
 }
 
-/* Clever empfiehlt – stage wrapper; framed card lives in CleverEmpfiehltCard */
+.sw-chat__last-turn .cust-akte-workspace__stage-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  min-width: 0;
+}
+
+.sw-chat__last-turn .cust-akte-workspace__assistant-card {
+  margin: 0;
+}
 .sw-chat__empty-recommend {
   margin: 12px 14px 10px;
   padding: 0;
@@ -802,6 +811,59 @@
   margin: 0 0 8px;
   padding: 0;
   min-width: 0;
+}
+
+/* Phase 2 Kundenakte: Intent = Eingabemodus, keine Action-Leiste */
+.sw-composer__intent-chips--utility {
+  margin: 0 0 4px;
+}
+
+.sw-composer__intent-chips--utility .sw-composer__chip--intent {
+  min-height: 28px;
+  padding: 3px 10px;
+  border-color: transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: none;
+}
+
+.sw-composer__intent-chips--utility .sw-composer__chip--intent:hover:not(:disabled) {
+  border-color: transparent;
+  background: rgba(148, 163, 184, 0.12);
+  color: #475569;
+  box-shadow: none;
+  transform: none;
+}
+
+.sw-composer__intent-chips--utility .sw-composer__chip--intent.is-selected {
+  border-color: transparent;
+  background: rgba(109, 91, 184, 0.08);
+  color: #5b5278;
+  font-weight: 550;
+  box-shadow: none;
+}
+
+.sw-composer__intent-chips--utility .sw-composer__intent-chevron {
+  min-width: 24px;
+  padding: 0 4px;
+  border-color: transparent;
+  border-left: none;
+  background: rgba(109, 91, 184, 0.06);
+  color: #64748b;
+  font-size: 0.65rem;
+}
+
+.sw-composer__intent-chips--utility .sw-composer__chip--intent-more {
+  min-height: 28px;
+  padding: 3px 8px;
+  border-color: transparent;
+  background: transparent;
+  color: #64748b;
+  font-size: 0.75rem;
+  font-weight: 500;
+  box-shadow: none;
 }
 
 .sw-composer__intent-chips .sw-composer__chips-scroll {
@@ -1478,6 +1540,14 @@
 .sw-composer__toolbar .dai-inline-mic__btn--active {
   background: #fee2e2 !important;
   color: #b91c1c;
+  box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35);
+  animation: dai-inline-mic-pulse 1.4s ease-out infinite;
+}
+
+@keyframes dai-inline-mic-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0.35); }
+  70% { box-shadow: 0 0 0 8px rgba(185, 28, 28, 0); }
+  100% { box-shadow: 0 0 0 0 rgba(185, 28, 28, 0); }
 }
 
 .sw-composer--message-edit .sw-composer__label {

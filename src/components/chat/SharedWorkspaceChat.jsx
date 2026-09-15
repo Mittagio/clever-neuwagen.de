@@ -89,6 +89,11 @@ export default function SharedWorkspaceChat({
   intentModeHint = '',
   /** Desktop-Tooltips je Chip-ID */
   intentChipTooltips = null,
+  /**
+   * Intent-Chips: 'default' | 'utility'
+   * utility = Modus-Hilfe, keine Action-Button-Anmutung (Kundenakte Clever-Tab).
+   */
+  intentChipsTone = 'default',
   /** Bei offener Review: Intent-Chips ausblenden/deaktivieren */
   hideIntentChips = false,
   /** Nach Suche: Message im Feed anspringen */
@@ -560,7 +565,14 @@ export default function SharedWorkspaceChat({
           onSubmit={handleSubmit}
         >
           {showIntentChips ? (
-            <div className="sw-composer__intent-chips" role="group" aria-label="Clever Arbeitsmodus">
+            <div
+              className={[
+                'sw-composer__intent-chips',
+                intentChipsTone === 'utility' ? 'sw-composer__intent-chips--utility' : '',
+              ].filter(Boolean).join(' ')}
+              role="group"
+              aria-label="Clever Eingabemodus"
+            >
               <div className="sw-composer__chips-scroll">
                 {intentChips.map((chip) => {
                   const selected = selectedIntentChipId
@@ -904,8 +916,16 @@ export default function SharedWorkspaceChat({
                 className={`sw-composer__send${sendLabel ? ' sw-composer__send--labeled' : ''}`}
                 disabled={magicBusy || !draft.trim()}
                 aria-busy={sending || undefined}
-                aria-label={sendAriaLabel || sendLabel || 'Senden'}
-                title={sendAriaLabel || sendLabel || 'Senden'}
+                aria-label={
+                  sending
+                    ? 'Abbrechen'
+                    : (sendAriaLabel || sendLabel || 'Senden')
+                }
+                title={
+                  sending
+                    ? 'Clever arbeitet noch – erneut tippen zum Abbrechen'
+                    : (sendAriaLabel || sendLabel || 'Senden')
+                }
               >
                 {sendLabel ? (
                   <span className="sw-composer__send-label">{sendLabel}</span>

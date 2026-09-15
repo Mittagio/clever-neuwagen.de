@@ -33,7 +33,7 @@ export const CLARIFY_VEHICLE_FOR_OFFER_PROMPT = 'Für welches Fahrzeug?';
 const MODEL_RE = /\b(ev\s*[2-9]|pv\s*[2-9]|sportage|sorento|ceed|xceed|niro|picanto|stonic|e-?soul)\b/i;
 const TRIM_RE = /\b(gt-?\s*line|x-?\s*line(?:\s*\d+)?|earth|air|spirit|vision|drive\s*wise|core|cor)\b/i;
 // Kein \\b vor/nach ß – JS-Word-Boundary bricht „weiß“
-const COLOR_RE = /(?:^|[^A-Za-zÄÖÜäöüß])(schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*|clear\s*white)(?=$|[^A-Za-zÄÖÜäöüß])/i;
+const COLOR_RE = /(?:^|[^A-Za-zÄÖÜäöüß])(magma(?:[\s-]*rot)?(?:\s*metallic)?|schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*|clear\s*white|interstellar(?:\s*grau)?|schneewei[sß](?:\s*pearl)?|runway\s*rot)(?=$|[^A-Za-zÄÖÜäöüß])/i;
 
 function normalizeModelKey(raw = '') {
   return String(raw || '')
@@ -299,7 +299,11 @@ function normalizeTrimLabel(raw = '') {
 }
 
 function normalizeColorBase(raw = '') {
-  const lower = String(raw || '').toLowerCase();
+  const lower = String(raw || '').toLowerCase().replace(/\s+/g, ' ').trim();
+  if (/magma/.test(lower)) return 'Magma-Rot Metallic';
+  if (/interstellar/.test(lower)) return 'Interstellar Grau';
+  if (/schneewei|snow\s*white/.test(lower)) return 'Schneeweiß';
+  if (/runway/.test(lower)) return 'Runway Rot';
   if (lower.startsWith('schwarz')) return 'schwarz';
   if (lower.startsWith('weiß') || lower.startsWith('weiss')) return 'weiß';
   if (/clear\s*white/.test(lower)) return 'weiß';

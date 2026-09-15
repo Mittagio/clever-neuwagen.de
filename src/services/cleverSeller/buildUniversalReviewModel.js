@@ -14,6 +14,10 @@ import { normalizeVehicleDisplayLabel } from './normalizeVehicleDisplayLabel.js'
 import { detectVehicleTrimConflict } from './detectVehicleTrimConflict.js';
 import { findSendableVehicleOffer } from './determineNextBestSellerAction.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
+import {
+  resolveOfferIdentityClarifyChoices,
+  resolveModelKeyFromTurn,
+} from './applyOfferIdentityChoice.js';
 
 /** Generische Unsicherheits-Narration – nie seller-facing anzeigen. */
 export const GENERIC_CONFIRMATION_WARNING_RE = /Mindestens ein Wert braucht kurze Bestätigung/i;
@@ -333,12 +337,14 @@ function resolveOfferReviewPrimaryAction({
 
 /**
  * Lokaler Identity-Hinweis (kein Choice-Wolken-Primary).
+ * Farbe/Variante: Katalog-Choices im Popover – kein Composer-Umweg als Default.
  */
 function buildOfferLocalClarify({
   identityConflicts = [],
   identityMissing = [],
   incomplete = false,
   missingRate = false,
+  modelKey = null,
 } = {}) {
   if (identityConflicts[0]) {
     const c = identityConflicts[0];
@@ -356,18 +362,27 @@ function buildOfferLocalClarify({
   }
   const slot = identityMissing[0];
   if (slot) {
-    const title = slot.id === 'offer_color'
+    const isColor = slot.id === 'offer_color' || slot.field === 'colorPreference';
+    const title = isColor
       ? 'Farbe prüfen'
       : (slot.id === 'offer_motor'
         ? 'Variante prüfen'
         : (slot.id === 'offer_packages' ? 'Ausstattung prüfen' : 'Angabe prüfen'));
+    const choices = resolveOfferIdentityClarifyChoices(slot, modelKey);
+    const hasChoices = choices.length > 0;
     return {
       title,
-      body: slot.label || null,
-      actionLabel: 'prüfen',
-      action: 'clarify_offer_identity_focus',
-      field: slot.field || null,
-      insertText: slot.choices?.[0]?.insertText || slot.choices?.[0]?.label || null,
+      // Kein zweiter Essay – Status sitzt am Fact / Chip
+      body: hasChoices ? null : (slot.label || null),
+      // Mit Katalog-Choices: Popover statt Composer-„prüfen“
+      actionLabel: hasChoices ? null : 'prüfen',
+      action: hasChoices ? 'apply_offer_identity_choice' : 'clarify_offer_identity_focus',
+      field: slot.field || (isColor ? 'colorPreference' : null),
+      slotId: slot.id || null,
+      insertText: choices[0]?.insertText || choices[0]?.label || slot.choices?.[0]?.insertText || null,
+      choices: hasChoices ? choices : null,
+      showSwatch: isColor,
+      chipLabel: isColor ? 'Farbe prüfen' : title,
     };
   }
   if (incomplete && missingRate) {
@@ -962,12 +977,17 @@ export function buildUniversalActionSections(turn = {}) {
       offerSectionSource.payload?.missingRate
       || (turn.missingInformation || []).some((m) => m.id === 'monthly_leasing_rate'),
     );
-    // Identity-Choices nicht als Primary-Wolke – nur lokaler Hinweis
+    const modelKeyForChoices = offerSectionSource.payload?.vehicleIdentityDraft?.modelKey
+      || offerSectionSource.payload?.modelKey
+      || vehicle?.value?.modelKey
+      || resolveModelKeyFromTurn(turn);
+    // Identity-Choices nicht als Primary-Wolke – lokaler Fact + Popover
     const localClarify = buildOfferLocalClarify({
       identityConflicts,
       identityMissing: identityConflicts.length ? [] : identityMissing,
       incomplete,
       missingRate,
+      modelKey: modelKeyForChoices,
     });
     const primaryAction = resolveOfferReviewPrimaryAction({
       incomplete,
@@ -985,6 +1005,10 @@ export function buildUniversalActionSections(turn = {}) {
         tone: 'compact',
       });
     }
+    const colorClarifyOpen = Boolean(
+      localClarify?.choices?.length
+      && (localClarify.field === 'colorPreference' || localClarify.slotId === 'offer_color'),
+    );
     sections.unshift({
       id: 'offer_prepare',
       kind: incomplete ? 'offer_incomplete' : 'offer_prepare',
@@ -1020,13 +1044,15 @@ export function buildUniversalActionSections(turn = {}) {
       primaryActions: [primaryAction],
       secondaryActions,
       localClarify,
-      // Agent: Rate über Composer – kein Mini-Menü „Monatsrate eingeben“
+      // Rate-Hinweis ok; Farbe nicht doppelt als Composer-Prompt
       clarifyPrompt: identityConflicts.length
         ? null
         : (incomplete
           ? (missingRate
             ? 'Noch offen: Rate'
-            : (clarifyPrompts[0] || localClarify?.body || null))
+            : (colorClarifyOpen
+              ? null
+              : (clarifyPrompts[0] || localClarify?.body || null)))
           : null),
     });
     }

@@ -207,7 +207,10 @@ export function startSpeechRecognition({
     }
     onResult?.({ finalText: finalText.trim(), interimText: interimText.trim(), raw: event });
   };
-  recognition.onerror = (e) => onError?.(mapSpeechRecognitionError(e.error ?? 'unknown'));
+  recognition.onerror = (e) => {
+    const code = e.error ?? 'unknown';
+    onError?.(mapSpeechRecognitionError(code), code);
+  };
   recognition.onend = () => onEnd?.();
   recognition.start();
   return recognition;

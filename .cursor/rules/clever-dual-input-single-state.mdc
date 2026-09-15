@@ -1,0 +1,56 @@
+---
+description: PRODUKT-FREEZE Dual Input / Single State – Klick und Composer → eine Wahrheit; keine parallelen States
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: DUAL INPUT / SINGLE STATE
+
+**Doc:** `docs/CLEVER_DUAL_INPUT_SINGLE_STATE.md` (Quelle der Wahrheit)  
+**Übergeordnet:** `docs/CLEVER_UX_MANIFEST_V1.md`
+
+## Produktsatz
+
+> Klicken wenn schnell. Sprechen wenn schneller. Immer: eine Wahrheit · ein State · ein Flow.
+
+## Verbindlich
+
+Wenn dieselbe Seller-Entscheidung per **Choice/Popover** und per **Composer/Sprache** möglich ist:
+
+```
+2 Inputs → 1 gemeinsamer State → 1 Wahrheit
+```
+
+- Kein paralleler Composer-State neben Choice-State  
+- Kein zweiter Fact / Draft / Wahrheit  
+- Katalog = Authority für Choices; Composer normalisiert dorthin  
+- Unsicherheit nur **lokal** („… prüfen“) – kein globales Review, kein Flow-Blocker  
+- Kleine Entscheidung = kompakte UI; Primary CTA bleibt dominant  
+- Kein „bitte im Composer ergänzen“, wenn direkte Choice möglich ist  
+
+## UI
+
+Primary für endliche/katalogische Werte: Chips · Popover · Sheet · Swatch · Quick Choices.  
+**Nicht** Default: klassisches `<select>` / großes Formular / Tabellen.
+
+Composer bleibt immer zweiter Eingang („schwarz“, „48 Monate“, „magma rot“, „AHK raus“) und schreibt denselben State.
+
+## Vor jeder Seller-UX-Änderung
+
+1. Endlich / katalogbasiert? → Choice  
+2. Freitext/Sprache möglich? → Composer → **derselbe** State  
+3. Zwei Wahrheiten? → vereinheitlichen  
+4. Unsicherheit lokal?  
+5. Entscheidung größer als Hauptprozess? → komprimieren  
+
+## Gilt u. a. für
+
+Akte · Offer Prep/Review · Multi-Offer · Vehicle Identity · Trade-in · Kundenwissen · Change Request · Calculator · Dokumente · Termin/Follow-up · Composer/Intake
+
+## Nicht
+
+- Neue parallele State-Maschine „für Dual Input“  
+- Architektur-Freezes (Working Draft, Zero-Loss, Offer Identity, Capture-then-Offer) aufbrechen  
+
+## Code-Bezug
+
+Farbe/Identity-Beispiel: `applyOfferIdentityChoice.js`, `offerVehicleIdentity.js`, Offer-Review-Card Popover

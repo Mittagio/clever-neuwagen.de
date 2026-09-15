@@ -9,6 +9,7 @@
  */
 
 import { getModelColorCatalog } from '../../data/manufacturer/configureModelColorCatalog.js';
+import { resolveConfigureModel } from '../configuration/configureModelBridge.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
 
 export const IDENTITY_SLOT_STATUS = Object.freeze({
@@ -93,9 +94,13 @@ function slot({ raw = null, canonical = null, status = null } = {}) {
 
 function resolveColorAgainstCatalog(modelKey, colorRaw) {
   if (!colorRaw) return { canonical: null, colorId: null, status: IDENTITY_SLOT_STATUS.OPEN };
-  const catalog = getModelColorCatalog(modelKey) || [];
+  const key = String(modelKey || '').toLowerCase().replace(/\s+/g, '');
+  const entry = key ? resolveConfigureModel(key) : null;
+  const fromModel = entry?.data?.colors || [];
+  const fromCatalog = getModelColorCatalog(key) || [];
+  const catalog = fromModel.length ? fromModel : fromCatalog;
   const needle = normalizeKey(colorRaw);
-  const hit = catalog.find((c) => {
+  const hits = catalog.filter((c) => {
     const id = normalizeKey(c.id);
     const label = normalizeKey(c.label);
     return id === needle
@@ -103,11 +108,19 @@ function resolveColorAgainstCatalog(modelKey, colorRaw) {
       || label.includes(needle)
       || needle.includes(label.slice(0, Math.min(6, label.length)));
   });
-  if (hit) {
+  if (hits.length === 1) {
     return {
-      canonical: hit.label,
-      colorId: hit.id,
+      canonical: hits[0].label,
+      colorId: hits[0].id,
       status: IDENTITY_SLOT_STATUS.RESOLVED,
+    };
+  }
+  if (hits.length > 1) {
+    return {
+      canonical: null,
+      colorId: null,
+      status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+      candidates: hits.map((h) => ({ id: h.id, label: h.label })),
     };
   }
   // Basisfarbe als Kundenwunsch sicher speichern – Katalogfarbe später lokal im Offer

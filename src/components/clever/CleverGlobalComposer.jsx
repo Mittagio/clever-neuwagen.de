@@ -22,6 +22,7 @@ import {
   shouldShowUniversalReview,
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
+import { applyOfferIdentityChoiceToSellerTurn } from '../../services/cleverSeller/applyOfferIdentityChoice.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { runComposerScreenshotAttachTurnWithInterpret } from '../../services/cleverSeller/runComposerScreenshotAttachTurn.js';
@@ -248,6 +249,8 @@ export default function CleverGlobalComposer() {
   const [agentWorkingMemory, setAgentWorkingMemory] = useState(() => createEmptyAgentWorkingMemory());
   /** Work-Context-Karte bleibt stehen, während Composer-Subtasks laufen */
   const quietIntakeContextRef = useRef(null);
+  /** Invalidiert in-flight handleSend (Zweitklick = Abbruch bei Stuck „denkt nach“). */
+  const sendGenerationRef = useRef(0);
   const progressHintSchedulerRef = useRef(null);
   if (!progressHintSchedulerRef.current) {
     progressHintSchedulerRef.current = createProgressHintScheduler({
@@ -676,6 +679,18 @@ export default function CleverGlobalComposer() {
       return;
     }
     if (chip.id === 'prepare_offer') {
+      if (
+        lastTurn?.assistantPolicy?.nextStep
+        || lastTurn?.captureNextStep
+        || rememberUndo?.leadId
+        || lastTurn?.resolvedCustomer?.id
+      ) {
+        handleCompactNextStepCta({
+          ctaAction: 'prepare_offer',
+          leadId: rememberUndo?.leadId || lastTurn?.resolvedCustomer?.id || null,
+        });
+        return;
+      }
       startComposerTaskFromChip(buildHomePrepareOfferComposerTask());
       return;
     }
@@ -777,6 +792,68 @@ export default function CleverGlobalComposer() {
       offerId: extras.offerId || extras.hit?.offerId || null,
     });
     navigate(path);
+  }
+
+  /** Compact-Confirm Primary (Angebot / Beratung) vom Dashboard-Composer. */
+  function handleCompactNextStepCta(payload = {}) {
+    const action = String(payload.ctaAction || '');
+    const leadId = payload.leadId
+      || rememberUndo?.leadId
+      || lastTurn?.resolvedCustomer?.id
+      || null;
+    const isConsult = action === 'consultation' || action === 'capture_then_consult';
+
+    if (leadId) {
+      handleOpenLead(leadId, isConsult ? {} : { focus: 'offer' });
+      pushComposerFeedback(
+        isConsult
+          ? 'Kundenakte geöffnet – Fahrzeuge finden.'
+          : 'Kundenakte geöffnet – Angebot vorbereiten.',
+        { kind: 'neutral', ms: 3200 },
+      );
+      setReviewModel(null);
+      return;
+    }
+
+    if (
+      lastTurn?.inboundLead?.proposeCreateCustomer
+      || lastTurn?.inboundLead?.detected
+    ) {
+      handleReviewAction({
+        action: 'accept_inbound_lead',
+        intentChipId: isConsult ? null : 'angebot',
+        label: isConsult ? 'Fahrzeuge finden' : 'Angebot vorbereiten',
+        leadId: lastTurn?.inboundLead?.matchedLeadId || null,
+      });
+      return;
+    }
+
+    const applied = applyAcceptedSellerTurn({}, lastTurn || {}, {
+      postFeedCard: false,
+      allowCreateCustomer: true,
+    });
+    if (applied?.ok && applied.lead?.id) {
+      if (typeof addLead === 'function') addLead(applied.lead);
+      handleOpenLead(applied.lead.id, isConsult ? {} : { focus: 'offer' });
+      pushComposerFeedback(
+        isConsult
+          ? 'Kundenakte angelegt – Fahrzeuge finden.'
+          : 'Kundenakte angelegt – Angebot vorbereiten.',
+        { kind: 'neutral', ms: 3200 },
+      );
+      setReviewModel(null);
+      setLastTurn(null);
+      return;
+    }
+
+    const chips = lastTurn?.assistantPolicy?.chips || [];
+    startComposerTaskFromChip({
+      ...buildHomePrepareOfferComposerTask(),
+      draft: chips.slice(0, 5).join(' '),
+      placeholder: isConsult
+        ? 'Welcher Kunde – Beratung starten?'
+        : 'Für welchen Kunden oder welches Fahrzeug?',
+    });
   }
 
   function resolvePrimaryNavTarget(turn, model) {
@@ -1076,6 +1153,33 @@ export default function CleverGlobalComposer() {
       setFocused(true);
       setDraft(label ? `${label} – ` : '');
       pushComposerFeedback('Wert korrigieren und absenden', { kind: 'neutral', ms: 2800 });
+      return;
+    }
+    if (action.action === 'apply_offer_identity_choice') {
+      const snapshot = ctx?.leadsSnapshot || [];
+      const leadId = lastTurn?.resolvedCustomer?.id || ctx?.currentCustomer?.id || null;
+      const lead = (leadId && snapshot.find((l) => l.id === leadId))
+        || ctx?.currentCustomer
+        || null;
+      const applied = applyOfferIdentityChoiceToSellerTurn(lastTurn, {
+        id: action.choiceId || action.id,
+        label: action.label || action.insertText,
+        insertText: action.insertText,
+        field: action.field,
+      }, {
+        lead,
+        field: action.field || 'colorPreference',
+        offerDraftId: action.offerDraftId || reviewModel?.offerDraftId || null,
+      });
+      if (applied.lead?.id && typeof updateLead === 'function') {
+        updateLead(applied.lead.id, applied.lead);
+      }
+      const nextTurn = applied.turn;
+      const nextModel = buildUniversalReviewModel(nextTurn);
+      setLastTurn(nextTurn);
+      setReviewModel(nextModel);
+      setFeedback('');
+      setFeedbackKind('');
       return;
     }
     if (action.action === 'revise_intake') {
@@ -1472,6 +1576,46 @@ export default function CleverGlobalComposer() {
       return;
     }
     if (
+      action.action === 'intend_send'
+      || action.id === 'intend_send'
+    ) {
+      const target = resolvePrimaryNavTarget(lastTurn, reviewModel);
+      const leadId = action.leadId
+        || target?.leadId
+        || lastTurn?.resolvedCustomer?.id
+        || lastTurn?.handoffWorkingContext?.customerId
+        || null;
+      if (leadId) {
+        handleOpenLead(leadId, {
+          ...(target || {}),
+          workingContext: lastTurn?.handoffWorkingContext || target?.workingContext || null,
+          offerId: action.cardId || action.offerDraftId || target?.offerId || null,
+        });
+        setReviewModel(null);
+        setLastTurn(null);
+        return;
+      }
+      pushComposerFeedback('Kunde öffnen, um das Angebot zu senden.', {
+        kind: 'neutral',
+        ms: 3200,
+      });
+      return;
+    }
+    if (
+      action.action === 'resolve_model_conflict'
+      || action.action === 'clarify_offer_identity_focus'
+    ) {
+      setFocused(true);
+      setDraft(action.insertText ? `${action.insertText} ` : '');
+      pushComposerFeedback(
+        action.action === 'resolve_model_conflict'
+          ? 'Fahrzeugvariante prüfen – bitte kurz bestätigen.'
+          : 'Angabe prüfen – bitte im Composer ergänzen.',
+        { kind: 'neutral', ms: 3200 },
+      );
+      return;
+    }
+    if (
       action.action === 'open_offer_handoff'
       || action.id === 'create_offer'
     ) {
@@ -1678,7 +1822,17 @@ export default function CleverGlobalComposer() {
 
   async function handleSend() {
     const text = String(draft || '').trim();
-    if (!text || sending) return;
+    if (!text) return;
+    // Zweitklick während „Clever denkt nach“: hängenden Turn freigeben (API down / Timeout).
+    if (sending) {
+      sendGenerationRef.current += 1;
+      progressHintSchedulerRef.current?.clear();
+      setSending(false);
+      pushComposerFeedback('Abgebrochen – bitte erneut senden.', { kind: 'neutral', ms: 2800 });
+      return;
+    }
+    const sendGeneration = ++sendGenerationRef.current;
+    const isStaleSend = () => sendGeneration !== sendGenerationRef.current;
     setSending(true);
     setFeedback('');
     progressHintSchedulerRef.current?.clear();
@@ -1710,6 +1864,7 @@ export default function CleverGlobalComposer() {
             sellerId: ctx?.sellerId || null,
             dealerId: ctx?.dealerId || null,
           });
+          if (isStaleSend()) return;
           progressHintSchedulerRef.current?.clear();
           setAgentWorkingMemory((prev) => updateAgentWorkingMemory(prev, agentResult, text));
           const agentPolicy = resolveAgentResponsePolicy(agentResult);
@@ -1768,7 +1923,6 @@ export default function CleverGlobalComposer() {
               if (contextSwitch?.autoOpen && contextSwitch.leadId) {
                 handleOpenLead(contextSwitch.leadId);
               }
-              setSending(false);
               return;
             }
 
@@ -1829,7 +1983,6 @@ export default function CleverGlobalComposer() {
               }
             }
 
-            setSending(false);
             return;
           }
 
@@ -1860,7 +2013,6 @@ export default function CleverGlobalComposer() {
             if (contextSwitch?.autoOpen && contextSwitch.leadId) {
               handleOpenLead(contextSwitch.leadId);
             }
-            setSending(false);
             return;
           }
         }
@@ -1915,6 +2067,7 @@ export default function CleverGlobalComposer() {
           memoryCategory: intentPurpose?.memoryCategory || null,
           offerAction: intentPurpose?.offerAction || null,
         });
+        if (isStaleSend()) return;
         if (serverTurn?.turnId || serverTurn?.ok || serverTurn?.multiSourceIntake) {
           turn = serverTurn;
         } else {
@@ -1937,6 +2090,7 @@ export default function CleverGlobalComposer() {
           forceAsyncInterpret: false,
         });
       }
+      if (isStaleSend()) return;
 
       let policy = resolveSellerResponsePolicy(turn);
       setAgentWorkingMemory((prev) => updateMemoryFromSellerTurn(prev, turn, text, policy));
@@ -2190,12 +2344,15 @@ export default function CleverGlobalComposer() {
         setFeedbackKind('');
       }
     } catch {
+      if (isStaleSend()) return;
       // Draft + Intent behalten – technischer Fehler, One-Turn nicht verbrauchen
       progressHintSchedulerRef.current?.clear();
       pushComposerFeedback(FALLBACK_INTERPRET_WARNING, { kind: 'error', ms: 5200 });
     } finally {
-      progressHintSchedulerRef.current?.clear();
-      setSending(false);
+      if (!isStaleSend()) {
+        progressHintSchedulerRef.current?.clear();
+        setSending(false);
+      }
     }
   }
 
@@ -2232,6 +2389,9 @@ export default function CleverGlobalComposer() {
       undoToken: lastTurn.assistantPolicy?.undoToken
         || rememberUndo?.undoToken
         || null,
+      leadIdHint: rememberUndo?.leadId
+        || lastTurn.resolvedCustomer?.id
+        || null,
     })
     : null;
   const showConversationSlot = Boolean(
@@ -2262,6 +2422,15 @@ export default function CleverGlobalComposer() {
               onCta={(payload) => {
                 if (payload.ctaAction === 'open_customer' && payload.leadId) {
                   handleOpenLead(payload.leadId);
+                  return;
+                }
+                if (
+                  payload.ctaAction === 'prepare_offer'
+                  || payload.ctaAction === 'consultation'
+                  || payload.ctaAction === 'capture_then_offer'
+                  || payload.ctaAction === 'capture_then_consult'
+                ) {
+                  handleCompactNextStepCta(payload);
                 }
               }}
               onUndo={rememberUndo ? handleRememberUndo : null}

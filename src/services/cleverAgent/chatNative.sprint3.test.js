@@ -84,6 +84,24 @@ const otherLead = {
   assert.equal(feedOpts.ctaAction, 'open_customer');
   assert.equal(feedOpts.leadId, brandes.id);
 
+  const compactOfferOpts = buildAssistantFeedCardOptions({
+    policy: {
+      kind: CLEVER_RESPONSE_KIND.COMPACT_CONFIRMATION,
+      message: 'Aufgenommen\n\nNächster Schritt:\nAngebot vorbereiten',
+      chips: ['Hinz', 'Kia EV2'],
+      nextStep: {
+        id: 'capture_then_offer',
+        label: 'Als Nächstes: Angebot vorbereiten',
+        cta: 'Angebot',
+      },
+    },
+    leadIdHint: brandes.id,
+  });
+  assert.equal(compactOfferOpts.ctaAction, 'prepare_offer');
+  assert.equal(compactOfferOpts.ctaLabel, 'Angebot vorbereiten');
+  assert.equal(compactOfferOpts.leadId, brandes.id);
+  assert.ok(!/Nächster Schritt/i.test(compactOfferOpts.text));
+
   const posted = postAssistantConversationFeedCard({
     lead: otherLead,
     policy: {
