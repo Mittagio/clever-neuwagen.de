@@ -94,7 +94,7 @@ import {
   shouldShowUniversalReview,
 } from '../../services/cleverSeller/buildUniversalReviewModel.js';
 import { applyAcceptedSellerTurn } from '../../services/cleverSeller/applyAcceptedSellerTurn.js';
-import { applyOfferIdentityChoiceToSellerTurn } from '../../services/cleverSeller/applyOfferIdentityChoice.js';
+import { applyOfferIdentityChoiceToSellerTurn, projectEquipmentWishFactsFromIdentity } from '../../services/cleverSeller/applyOfferIdentityChoice.js';
 import { extractMagicOfferPdf } from '../../services/dealer/magicOfferPdfExtract.js';
 import { runComposerPdfAttachTurnWithOcr } from '../../services/cleverSeller/runComposerPdfAttachTurn.js';
 import { runComposerScreenshotAttachTurnWithInterpret } from '../../services/cleverSeller/runComposerScreenshotAttachTurn.js';
@@ -287,6 +287,8 @@ export default function CustomerAkteSharedWorkspace({
   const [sending, setSending] = useState(false);
   const sendingWatchdogRef = useRef(null);
   const sendingRef = useRef(false);
+  /** Verhindert, dass ein älterer Request den Working-State eines neueren löscht. */
+  const sendingGenerationRef = useRef(0);
   const [assist, setAssist] = useState(null);
   const [universalTurn, setUniversalTurn] = useState(null);
   const [selectedIntentChipId, setSelectedIntentChipId] = useState(
@@ -672,6 +674,7 @@ export default function CustomerAkteSharedWorkspace({
   async function runCleverProposeFromInput(rawText) {
     const text = String(rawText ?? '').trim();
     if (!text || sendingRef.current) return false;
+    const sendGeneration = ++sendingGenerationRef.current;
     sendingRef.current = true;
     setSending(true);
     setFeedback('Clever arbeitet …');
@@ -703,7 +706,7 @@ export default function CustomerAkteSharedWorkspace({
       });
       if (draftMutation?.offerDraft) {
         const payload = buildMutatedPrepareOfferPayload(draftMutation, {
-          lead,
+          lead: draftMutation.lead || lead,
           sellerInput: text,
         });
         const nextMem = {
@@ -716,7 +719,14 @@ export default function CustomerAkteSharedWorkspace({
           lastSellerMessage: text,
         };
         setAgentWorkingMemory(nextMem);
-        persistWorkingMemoryToLead(nextMem, lead, 'Clever Angebotsentwurf angepasst');
+        persistWorkingMemoryToLead(
+          nextMem,
+          draftMutation.lead || lead,
+          'Clever Angebotsentwurf angepasst',
+        );
+        if (draftMutation.lead && typeof onPersistLead === 'function') {
+          onPersistLead(draftMutation.lead);
+        }
         setDraft('');
         setFeedback('');
         setAppointmentDraft(null);
@@ -740,7 +750,12 @@ export default function CustomerAkteSharedWorkspace({
             payload,
           }],
           pendingAction: { type: 'prepare_offer', status: 'prepared', payload },
-          extractedFacts: [],
+          // Facts = Projektion aus canonical identity.packages (kein Parallel-State)
+          extractedFacts: projectEquipmentWishFactsFromIdentity(
+            [],
+            draftMutation.vehicleIdentityDraft,
+            { modelKey: draftMutation.vehicleIdentityDraft?.modelKey || null },
+          ),
           agentSource: 'deterministic',
         });
         return true;
@@ -1240,8 +1255,14 @@ export default function CustomerAkteSharedWorkspace({
       return false;
     } finally {
       progressHintSchedulerRef.current?.clear();
-      sendingRef.current = false;
-      setSending(false);
+      // Nur der aktuelle Request darf Working-State beenden
+      if (sendGeneration === sendingGenerationRef.current) {
+        sendingRef.current = false;
+        setSending(false);
+        setFeedback((prev) => (
+          prev === 'Clever arbeitet …' ? '' : prev
+        ));
+      }
     }
   }
 
@@ -2313,12 +2334,24 @@ export default function CustomerAkteSharedWorkspace({
       focusComposer();
       return;
     }
+    if (action.action === 'revise_fact') {
+      const label = String(action.label || '')
+        .replace(/\s*prüfen\s*$/i, '')
+        .trim();
+      setDraft(label ? `${label} – ` : '');
+      focusComposer();
+      setFeedback('Wert korrigieren und absenden');
+      setTimeout(() => setFeedback(''), 2800);
+      return;
+    }
     if (action.action === 'apply_offer_identity_choice') {
       const applied = applyOfferIdentityChoiceToSellerTurn(universalTurn, {
         id: action.choiceId || action.id,
         label: action.label || action.insertText,
         insertText: action.insertText,
         field: action.field,
+        dismiss: action.dismiss === true,
+        replacesLabel: action.replacesLabel || action.label,
       }, {
         lead,
         field: action.field || 'colorPreference',
@@ -2326,10 +2359,23 @@ export default function CustomerAkteSharedWorkspace({
           || offerPrepHandoffModel?.offerDraftId
           || universalTurn?.preparedActions?.find((a) => a.type === SELLER_TURN_INTENTS.PREPARE_OFFER)
             ?.payload?.offerDraftId
+          || lead?.crm?.cleverWorkingState?.currentOfferDraftId
           || null,
+        replacesLabel: action.replacesLabel || null,
       });
       if (applied.lead && typeof onPersistLead === 'function') {
         onPersistLead(applied.lead);
+      }
+      if (applied.lead && applied.offerDraftId) {
+        setAgentWorkingMemory((prev) => {
+          const draft = getOfferDraftById(applied.lead, applied.offerDraftId);
+          if (!draft) return prev;
+          return {
+            ...prev,
+            currentOfferDraftId: applied.offerDraftId,
+            currentOfferDraft: draft,
+          };
+        });
       }
       setUniversalTurn(applied.turn);
       setDraft('');

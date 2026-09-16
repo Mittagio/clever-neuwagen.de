@@ -30,6 +30,119 @@ function nowIso() {
   return new Date().toISOString();
 }
 
+function normalizePackageWishKey(value = '') {
+  return String(value || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '');
+}
+
+function packageWishKeysMatch(a = '', b = '') {
+  if (!a || !b) return false;
+  if (a === b) return true;
+  if (a.includes(b) || b.includes(a)) return true;
+  const winterA = a.includes('winter') || a.includes('wic');
+  const winterB = b.includes('winter') || b.includes('wic');
+  return winterA && winterB;
+}
+
+/**
+ * Canonical Package-/Identity-Mutation am bestehenden Offer Draft.
+ * Choice und Composer müssen hier landen (keine parallele Package-Wahrheit).
+ *
+ * @returns {{ lead: object, offerDraft: object|null, offerDraftId: string|null, vehicleIdentityDraft: object|null }}
+ */
+export function commitIdentityPatchOnOfferDraft(lead, offerDraftId, identityPatch = {}) {
+  if (!lead || !offerDraftId || !identityPatch || !Object.keys(identityPatch).length) {
+    return {
+      lead: lead || null,
+      offerDraft: null,
+      offerDraftId: offerDraftId || null,
+      vehicleIdentityDraft: null,
+    };
+  }
+  const draft = getOfferDraftById(lead, offerDraftId);
+  if (!draft?.vehicleIdentityDraft) {
+    return {
+      lead,
+      offerDraft: null,
+      offerDraftId,
+      vehicleIdentityDraft: null,
+    };
+  }
+  const nextIdentity = applyIdentityFollowUpPatch(draft.vehicleIdentityDraft, identityPatch);
+  nextIdentity.id = draft.vehicleIdentityDraft.id;
+  let nextLead = upsertOfferDraftOnLead(lead, {
+    ...draft,
+    offerDraftId,
+    vehicleIdentityDraft: nextIdentity,
+  });
+
+  const profile = { ...(nextLead.crm?.needProfile || {}) };
+  let profileChanged = false;
+  if (identityPatch.color) {
+    profile.colorPreference = String(identityPatch.color).toLowerCase();
+    profileChanged = true;
+  }
+  if (
+    Array.isArray(identityPatch.addPackages)
+    || Array.isArray(identityPatch.removePackages)
+    || identityPatch.clearPackages === true
+  ) {
+    let wishes = Array.isArray(profile.equipmentWishes) ? [...profile.equipmentWishes] : [];
+    const removeKeys = (identityPatch.removePackages || [])
+      .map(normalizePackageWishKey)
+      .filter(Boolean);
+    if (removeKeys.length) {
+      wishes = wishes.filter((w) => {
+        const wk = normalizePackageWishKey(w);
+        return !removeKeys.some((rk) => packageWishKeysMatch(wk, rk));
+      });
+    }
+    if (identityPatch.clearPackages === true) {
+      const keepKeys = new Set(
+        (nextIdentity.packages || []).map((p) => normalizePackageWishKey(p.raw || p.canonical)),
+      );
+      wishes = wishes.filter((w) => {
+        const wk = normalizePackageWishKey(w);
+        if (!/(paket|package|winter|wic|drivewise|upgrade)/i.test(String(w || ''))) return true;
+        return keepKeys.has(wk) || [...keepKeys].some((k) => packageWishKeysMatch(wk, k));
+      });
+    }
+    for (const add of identityPatch.addPackages || []) {
+      const label = String(add || '').trim();
+      if (!label) continue;
+      const ak = normalizePackageWishKey(label);
+      if (wishes.some((w) => packageWishKeysMatch(normalizePackageWishKey(w), ak))) continue;
+      wishes.push(label);
+    }
+    profile.equipmentWishes = wishes;
+    profileChanged = true;
+  }
+
+  if (profileChanged) {
+    nextLead = {
+      ...nextLead,
+      crm: {
+        ...(nextLead.crm || {}),
+        needProfile: profile,
+      },
+      wish: {
+        ...(nextLead.wish || {}),
+        preferredColor: identityPatch.color || nextLead.wish?.preferredColor,
+      },
+    };
+  }
+
+  return {
+    lead: nextLead,
+    offerDraft: getOfferDraftById(nextLead, offerDraftId),
+    offerDraftId,
+    vehicleIdentityDraft: nextIdentity,
+  };
+}
+
 /**
  * Leerer Working State am Lead.
  */
@@ -197,25 +310,30 @@ export function parseWorkingDraftFollowUp(sellerInput = '', facts = []) {
   const text = String(sellerInput || '').trim();
   if (!text) return null;
 
-  // Paket entfernen („Winterpaket raus“, „Nimm das Winterpaket wieder raus“)
+  // Paket entfernen („Winterpaket raus“, „WIC raus“, „Winter Connect raus“)
   const removePkg = text.match(
-    /\b([\wÄÖÜäöüß-]*(?:paket|package|winter(?:\s*-?\s*paket)?|drive\s*wise|upgrade|business|heat\s*pump|wärmepumpe))\s*(?:wieder\s+)?(?:raus|weg|entfernen|ohne)\b/i,
+    /\b([\wÄÖÜäöüß-]*(?:paket|package|winter(?:\s*-?\s*(?:connect\s*)?paket)?|drive\s*wise|upgrade|business|heat\s*pump|wärmepumpe)|wic|winter\s*connect)\s*(?:wieder\s+)?(?:raus|weg|entfernen|ohne)\b/i,
   ) || text.match(
-    /\b(?:raus|weg|entfernen|ohne)\s+(?:das\s+|den\s+|die\s+)?([\wÄÖÜäöüß-]*(?:paket|winter|drive\s*wise|upgrade|business))\b/i,
+    /\b(?:raus|weg|entfernen|ohne)\s+(?:das\s+|den\s+|die\s+)?([\wÄÖÜäöüß-]*(?:paket|winter|drive\s*wise|upgrade|business)|wic|winter\s*connect)\b/i,
   ) || text.match(
-    /\b(?:nimm|entferne|streich(?:e)?)(?:\s+das|\s+den|\s+die)?\s+([\wÄÖÜäöüß-]*(?:winter(?:\s*-?\s*paket)?|paket|drive\s*wise|upgrade|business))(?:\s+\w+){0,2}\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i,
-  ) || text.match(/\bwinter(?:\s*-?\s*)?paket\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i);
+    /\b(?:nimm|entferne|streich(?:e)?)(?:\s+das|\s+den|\s+die)?\s+([\wÄÖÜäöüß-]*(?:winter(?:\s*-?\s*(?:connect\s*)?paket)?|paket|drive\s*wise|upgrade|business)|wic|winter\s*connect)(?:\s+\w+){0,2}\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i,
+  ) || text.match(/\b(?:wic|winter\s*connect(?:\s*-?\s*paket)?|winter(?:\s*-?\s*)?paket)\s*(?:wieder\s+)?(?:raus|weg|entfernen)\b/i);
   if (
     removePkg
-    || /\bwinter(?:\s*-?\s*)?paket\s*(?:wieder\s+)?(?:raus|weg)\b/i.test(text)
-    || /\b(?:nimm|entferne).{0,40}\bwinter(?:\s*-?\s*)?paket\b.{0,20}\b(?:raus|weg|entfernen)\b/i.test(text)
+    || /\b(?:wic|winter\s*connect(?:\s*-?\s*paket)?|winter(?:\s*-?\s*)?paket)\s*(?:wieder\s+)?(?:raus|weg)\b/i.test(text)
+    || /\b(?:nimm|entferne).{0,40}\b(?:wic|winter\s*connect|winter(?:\s*-?\s*)?paket)\b.{0,20}\b(?:raus|weg|entfernen)\b/i.test(text)
   ) {
-    const label = removePkg?.[1] && !/^(raus|weg|ohne|entfernen|wieder|das|den|die|nimm)$/i.test(removePkg[1])
+    const rawLabel = removePkg?.[1] && !/^(raus|weg|ohne|entfernen|wieder|das|den|die|nimm)$/i.test(removePkg[1])
       ? removePkg[1]
       : 'Winterpaket';
+    const label = /\bwic\b|winter\s*connect/i.test(rawLabel) || /\bwic\b|winter\s*connect/i.test(text)
+      ? 'Winter Connect Paket'
+      : (/winter/i.test(rawLabel) ? 'Winterpaket' : rawLabel);
     return {
       kind: 'remove_package',
-      removePackages: [/winter/i.test(label) ? 'Winterpaket' : label],
+      removePackages: [label, 'Winterpaket', 'Winter-Connect-Paket', 'Winter Connect Paket', 'WIC'].filter(
+        (v, i, arr) => arr.indexOf(v) === i,
+      ),
       raw: text,
     };
   }
@@ -340,20 +458,25 @@ export function mutateActiveOfferDraft({
   }
   if (!Object.keys(patch).length) return null;
 
-  const nextIdentity = applyIdentityFollowUpPatch(active.vehicleIdentityDraft, patch);
-  // IDs hard stabil
-  nextIdentity.id = active.vehicleIdentityDraft.id;
+  // Shared Domain-Mutation (gleiche wie Choice → applyOfferIdentityChoice)
+  const committed = commitIdentityPatchOnOfferDraft(lead, active.offerDraftId, patch);
+  const nextIdentity = committed.vehicleIdentityDraft
+    || applyIdentityFollowUpPatch(active.vehicleIdentityDraft, patch);
+  if (nextIdentity && active.vehicleIdentityDraft?.id) {
+    nextIdentity.id = active.vehicleIdentityDraft.id;
+  }
 
   const changedFields = Object.keys(patch).filter((k) => k !== 'modelKey');
+  const baseOffer = committed.offerDraft || active;
   const nextOffer = {
-    ...active,
+    ...baseOffer,
     offerDraftId: active.offerDraftId,
     vehicleIdentityDraftId: nextIdentity.id,
     vehicleIdentityDraft: nextIdentity,
-    vehicleTrackId: active.vehicleTrackId || null,
+    vehicleTrackId: active.vehicleTrackId || baseOffer.vehicleTrackId || null,
     focusModelKey: active.focusModelKey || nextIdentity.modelKey || null,
-    commercialScenarioId: active.commercialScenarioId || null,
-    commercialScenario: active.commercialScenario || null,
+    commercialScenarioId: active.commercialScenarioId || baseOffer.commercialScenarioId || null,
+    commercialScenario: active.commercialScenario || baseOffer.commercialScenario || null,
     rate: null,
     rateAuthority: RATE_AUTHORITY.STALE,
     invalidateVehicleRate: true,
@@ -368,9 +491,11 @@ export function mutateActiveOfferDraft({
   return {
     offerDraft: nextOffer,
     vehicleIdentityDraft: nextIdentity,
+    lead: committed.lead || lead,
     changedFields,
     followUp,
     retargeted,
+    identityPatch: patch,
   };
 }
 

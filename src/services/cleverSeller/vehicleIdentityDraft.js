@@ -11,12 +11,25 @@
 import { getModelColorCatalog } from '../../data/manufacturer/configureModelColorCatalog.js';
 import { resolveConfigureModel } from '../configuration/configureModelBridge.js';
 import { RATE_AUTHORITY } from './captureThenOffer.js';
+import { validateOfferPackageAgainstCatalog } from './offerVehicleIdentity.js';
 
 export const IDENTITY_SLOT_STATUS = Object.freeze({
   CAPTURED: 'captured',
   NEEDS_REFINEMENT: 'needs_refinement',
   OPEN: 'open',
   RESOLVED: 'resolved',
+});
+
+/**
+ * Package-Resolution (orthogonal zu Review-Chip):
+ * - unresolved: Kandidat, noch nicht bestätigt
+ * - seller_confirmed: Verkäufer bestätigt, Katalog nicht validiert
+ * - catalog_validated: eindeutiger Katalogtreffer für Model/Trim
+ */
+export const PACKAGE_RESOLUTION = Object.freeze({
+  UNRESOLVED: 'unresolved',
+  SELLER_CONFIRMED: 'seller_confirmed',
+  CATALOG_VALIDATED: 'catalog_validated',
 });
 
 export const OFFER_DRAFT_STATUS = Object.freeze({
@@ -89,6 +102,55 @@ function slot({ raw = null, canonical = null, status = null } = {}) {
     raw: hasRaw ? String(raw).trim() : null,
     canonical: hasCanonical ? canonical : null,
     status: resolvedStatus,
+  };
+}
+
+/**
+ * Package-Slot mit getrennter Seller-/Katalog-Semantik.
+ * @param {{
+ *   raw?: string|null,
+ *   canonical?: string|null,
+ *   status?: string|null,
+ *   resolution?: string|null,
+ *   catalogValidated?: boolean|null,
+ *   packageId?: string|null,
+ * }} opts
+ */
+export function packageSlot(opts = {}) {
+  const raw = opts.raw != null ? String(opts.raw).replace(/\s*prüfen\s*$/i, '').trim() : null;
+  const catalogValidated = opts.catalogValidated === true;
+  let resolution = opts.resolution || null;
+  if (!resolution) {
+    if (opts.unresolved === true || /prüfen/i.test(String(opts.raw || ''))) {
+      resolution = PACKAGE_RESOLUTION.UNRESOLVED;
+    } else if (catalogValidated) {
+      resolution = PACKAGE_RESOLUTION.CATALOG_VALIDATED;
+    } else if (opts.sellerConfirmed === true || opts.status === IDENTITY_SLOT_STATUS.CAPTURED) {
+      resolution = PACKAGE_RESOLUTION.SELLER_CONFIRMED;
+    } else {
+      resolution = PACKAGE_RESOLUTION.UNRESOLVED;
+    }
+  }
+  let status = opts.status || null;
+  if (!status) {
+    if (resolution === PACKAGE_RESOLUTION.CATALOG_VALIDATED) status = IDENTITY_SLOT_STATUS.RESOLVED;
+    else if (resolution === PACKAGE_RESOLUTION.SELLER_CONFIRMED) status = IDENTITY_SLOT_STATUS.CAPTURED;
+    else status = IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT;
+  }
+  const canonical = catalogValidated && opts.canonical
+    ? opts.canonical
+    : (resolution === PACKAGE_RESOLUTION.CATALOG_VALIDATED ? (opts.canonical || raw) : null);
+  return {
+    ...slot({
+      raw: opts.raw != null && /prüfen/i.test(String(opts.raw)) && resolution === PACKAGE_RESOLUTION.UNRESOLVED
+        ? String(opts.raw).trim()
+        : raw,
+      canonical,
+      status,
+    }),
+    resolution,
+    catalogValidated,
+    packageId: opts.packageId || null,
   };
 }
 
@@ -279,26 +341,73 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
   const packageFacts = facts.filter((f) => f.field === 'equipmentWish');
   const packages = [];
   const seenPkg = new Set();
-  const pushPackage = (raw, canonical = null) => {
+  const pushPackage = (raw, meta = null) => {
     if (!raw) return;
     const text = String(raw).trim();
     if (!text) return;
     if (/\d+[.,]?\d*\s*kwh/i.test(text)) return;
-    const key = normalizeKey(text);
+    const key = normalizeKey(text.replace(/\s*prüfen\s*$/i, ''));
     if (!key || seenPkg.has(key)) return;
     seenPkg.add(key);
-    packages.push(slot({
+    const m = meta && typeof meta === 'object' ? meta : {};
+    const unresolved = m.unresolved === true
+      || m.validationStatus === 'needs_review'
+      || /prüfen/i.test(text);
+    const catalogOk = m.catalogValidated === true
+      || (m.validationStatus === 'ok' && m.packageId);
+    if (catalogOk) {
+      packages.push(packageSlot({
+        raw: text.replace(/\s*prüfen\s*$/i, '').trim(),
+        canonical: m.canonical || text.replace(/\s*prüfen\s*$/i, '').trim(),
+        resolution: PACKAGE_RESOLUTION.CATALOG_VALIDATED,
+        catalogValidated: true,
+        packageId: m.packageId || m.canonicalId || null,
+      }));
+      return;
+    }
+    if (unresolved) {
+      packages.push(packageSlot({
+        raw: /prüfen/i.test(text) ? text : `${text.replace(/\s*prüfen\s*$/i, '').trim()} prüfen`,
+        resolution: PACKAGE_RESOLUTION.UNRESOLVED,
+        catalogValidated: false,
+      }));
+      return;
+    }
+    if (m.sellerConfirmed || m.resolution === PACKAGE_RESOLUTION.SELLER_CONFIRMED) {
+      packages.push(packageSlot({
+        raw: text.replace(/\s*prüfen\s*$/i, '').trim(),
+        resolution: PACKAGE_RESOLUTION.SELLER_CONFIRMED,
+        catalogValidated: false,
+        sellerConfirmed: true,
+      }));
+      return;
+    }
+    // Haystack-Kandidat ohne Confirm → unresolved
+    packages.push(packageSlot({
       raw: text,
-      canonical: canonical && typeof canonical === 'string' ? canonical : null,
-      status: canonical ? IDENTITY_SLOT_STATUS.RESOLVED : IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+      resolution: PACKAGE_RESOLUTION.UNRESOLVED,
+      catalogValidated: false,
+      unresolved: true,
     }));
   };
   for (const fact of packageFacts) {
     if (fact?.value?.kind === 'motor') continue;
-    const canonicalId = fact?.value?.validationStatus === 'needs_review'
-      ? null
-      : fact.value?.id;
-    pushPackage(packageLabelFromFact(fact), canonicalId);
+    const unresolved = fact.needsConfirmation
+      || fact.value?.validationStatus === 'needs_review'
+      || /prüfen/i.test(String(fact.label || ''));
+    const catalogOk = fact.value?.validationStatus === 'ok' && fact.value?.id;
+    const sellerConfirmed = fact.value?.resolution === PACKAGE_RESOLUTION.SELLER_CONFIRMED
+      || fact.value?.validationStatus === 'seller_confirmed'
+      || fact.value?.catalogValidated === false && !unresolved && fact.needsConfirmation === false;
+    pushPackage(packageLabelFromFact(fact), {
+      unresolved,
+      catalogValidated: Boolean(catalogOk),
+      validationStatus: fact.value?.validationStatus,
+      packageId: catalogOk ? fact.value.id : null,
+      canonical: catalogOk ? (fact.value?.label || null) : null,
+      sellerConfirmed,
+      resolution: fact.value?.resolution || null,
+    });
   }
   // Zero-Loss: Paket oft in vehicleInterest.value statt separatem equipmentWish
   if (interest?.value && typeof interest.value === 'object') {
@@ -312,15 +421,7 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
       for (const p of interest.value.packageCandidates) {
         const raw = typeof p === 'string' ? p : (p?.raw || p?.label);
         if (!raw) continue;
-        const text = String(raw).trim();
-        const key = normalizeKey(text);
-        if (!key || seenPkg.has(key)) continue;
-        seenPkg.add(key);
-        packages.push(slot({
-          raw: p?.label || text,
-          canonical: null,
-          status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
-        }));
+        pushPackage(typeof p === 'string' ? p : (p?.label || raw), { unresolved: true });
       }
     }
   }
@@ -481,15 +582,98 @@ export function applyIdentityFollowUpPatch(draft, patch = {}) {
       next.colorId = resolved.colorId;
     }
   }
+  if (Array.isArray(patch.removePackages)) {
+    const removeKeys = patch.removePackages.map(normalizeKey).filter(Boolean);
+    next.packages = next.packages.filter((p) => {
+      const pk = normalizeKey(p.raw);
+      if (!pk) return true;
+      if (removeKeys.includes(pk)) return false;
+      // WIC / Winter Connect / Winterpaket – gleiche Absicht trotz Label-Varianten
+      return !removeKeys.some((r) => (
+        (r.includes('winter') || r.includes('wic') || pk.includes('winter') || pk.includes('wic'))
+        && (pk.includes(r) || r.includes(pk) || (r.includes('winter') && pk.includes('winter')))
+      ));
+    });
+  }
+  if (patch.clearPackages === true) {
+    next.packages = [];
+  }
   if (Array.isArray(patch.addPackages)) {
-    for (const raw of patch.addPackages) {
-      const key = normalizeKey(raw);
-      if (!key) continue;
-      if (next.packages.some((p) => normalizeKey(p.raw) === key)) continue;
-      next.packages.push(slot({
-        raw: String(raw),
-        canonical: null,
-        status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
+    for (const entry of patch.addPackages) {
+      const isObj = entry && typeof entry === 'object';
+      const rawIn = isObj
+        ? (entry.raw || entry.label || entry.insertText || '')
+        : entry;
+      const clean = String(rawIn || '').replace(/\s*prüfen\s*$/i, '').trim();
+      if (!clean) continue;
+      const key = normalizeKey(clean);
+
+      // Ersetzt unsichere/Alias-Varianten derselben Paketfamilie (kein Doppel-Chip)
+      next.packages = next.packages.filter((p) => {
+        const pk = normalizeKey(String(p.raw || '').replace(/\s*prüfen\s*$/i, ''));
+        if (!pk) return true;
+        if (pk === key) return false;
+        const winterNew = key.includes('winter') || key.includes('wic');
+        const winterOld = pk.includes('winter') || pk.includes('wic');
+        if (winterNew && winterOld) return false;
+        return true;
+      });
+
+      // Explizite Meta aus Choice-Patch hat Vorrang; sonst Katalog prüfen
+      let catalogValidated = isObj && typeof entry.catalogValidated === 'boolean'
+        ? entry.catalogValidated
+        : null;
+      let resolution = isObj && entry.resolution ? entry.resolution : null;
+      let packageId = isObj ? (entry.packageId || entry.id || null) : null;
+      let canonical = isObj ? (entry.canonical || null) : null;
+
+      if (isObj && entry.unresolved === true) {
+        resolution = PACKAGE_RESOLUTION.UNRESOLVED;
+        catalogValidated = false;
+      } else if (catalogValidated == null || !resolution) {
+        const validated = next.modelKey
+          ? validateOfferPackageAgainstCatalog({
+            modelKey: next.modelKey,
+            packageLabel: clean,
+            trim: next.trim?.canonical || next.trim?.raw || null,
+          })
+          : null;
+        if (validated?.ok) {
+          catalogValidated = true;
+          resolution = PACKAGE_RESOLUTION.CATALOG_VALIDATED;
+          packageId = packageId || validated.packageId;
+          canonical = canonical || validated.packageLabel;
+        } else if (!resolution) {
+          // Seller-Intent (Choice/Composer), kein Katalogtreffer
+          resolution = PACKAGE_RESOLUTION.SELLER_CONFIRMED;
+          catalogValidated = false;
+        } else {
+          catalogValidated = resolution === PACKAGE_RESOLUTION.CATALOG_VALIDATED;
+        }
+      }
+
+      if (resolution === PACKAGE_RESOLUTION.CATALOG_VALIDATED) {
+        catalogValidated = true;
+        if (!canonical) canonical = clean;
+      } else if (resolution === PACKAGE_RESOLUTION.SELLER_CONFIRMED) {
+        catalogValidated = false;
+        canonical = null;
+        packageId = null;
+      } else {
+        catalogValidated = false;
+        canonical = null;
+        packageId = null;
+      }
+
+      next.packages.push(packageSlot({
+        raw: resolution === PACKAGE_RESOLUTION.UNRESOLVED && /prüfen/i.test(String(rawIn))
+          ? String(rawIn).trim()
+          : clean,
+        canonical,
+        resolution,
+        catalogValidated,
+        packageId,
+        sellerConfirmed: resolution === PACKAGE_RESOLUTION.SELLER_CONFIRMED,
       }));
     }
   }
@@ -503,13 +687,6 @@ export function applyIdentityFollowUpPatch(draft, patch = {}) {
         status: IDENTITY_SLOT_STATUS.NEEDS_REFINEMENT,
       });
     }
-  }
-  if (Array.isArray(patch.removePackages)) {
-    const remove = new Set(patch.removePackages.map(normalizeKey));
-    next.packages = next.packages.filter((p) => !remove.has(normalizeKey(p.raw)));
-  }
-  if (patch.clearPackages === true) {
-    next.packages = [];
   }
 
   next.vehicleLabel = [

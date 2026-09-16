@@ -489,6 +489,21 @@ button.sur-card__chip {
   margin-left: 0.15rem;
 }
 
+.sur-card__chip-wrap {
+  position: relative;
+  display: inline-flex;
+  max-width: 100%;
+}
+
+.sur-card__chip--choice-open {
+  z-index: 2;
+}
+
+.sur-card__chip-popover {
+  min-width: 12rem;
+  max-width: min(20rem, 85vw);
+}
+
 .sur-card__chip-action {
   margin: 0;
   padding: 0 0.15rem;

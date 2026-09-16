@@ -70,6 +70,7 @@ function normalizeSurChip(chip) {
     needsConfirmation,
     editable,
     editor,
+    choices: Array.isArray(chip.choices) ? chip.choices : null,
     title: chip.title
       || (needsConfirmation
         ? 'Unsicher – antippen zum Korrigieren'
@@ -102,6 +103,10 @@ function renderSurChips(chips, groupId, {
   onEditChip = null,
   editingKey = null,
   liveEditEnabled = false,
+  chipChoiceKey = null,
+  chipChoiceRef = null,
+  onToggleChipChoices = null,
+  onPickChipChoice = null,
 } = {}) {
   const list = (Array.isArray(chips) ? chips : [])
     .map(normalizeSurChip)
@@ -117,17 +122,23 @@ function renderSurChips(chips, groupId, {
     const justChanged = highlightSet.has(chip.label.toLowerCase());
     const editing = editingKey === key;
     const canEdit = liveEditEnabled && chip.editable && typeof onEditChip === 'function';
-    const ChipTag = canEdit ? 'button' : 'span';
+    const hasChoices = Array.isArray(chip.choices) && chip.choices.length > 0;
+    const choicesOpen = chipChoiceKey === key && hasChoices;
+    const ChipTag = canEdit && !hasChoices ? 'button' : 'span';
     return (
-      <ChipTag
+      <span
         key={key}
-        type={canEdit ? 'button' : undefined}
-        className={surChipClassName(chip, { justChanged, editing })}
+        className="sur-card__chip-wrap"
+        ref={choicesOpen ? chipChoiceRef : undefined}
+      >
+      <ChipTag
+        type={canEdit && !hasChoices ? 'button' : undefined}
+        className={`${surChipClassName(chip, { justChanged, editing })}${choicesOpen ? ' sur-card__chip--choice-open' : ''}`}
         title={chip.title}
         data-source={chip.source || undefined}
         data-uncertain={chip.needsConfirmation ? 'true' : undefined}
         data-field={chip.field || undefined}
-        onClick={canEdit ? (e) => {
+        onClick={canEdit && !hasChoices ? (e) => {
           e.preventDefault();
           e.stopPropagation();
           onEditChip(chip, key);
@@ -140,10 +151,10 @@ function renderSurChips(chips, groupId, {
           <span className="sur-card__chip-uncertain-mark" aria-hidden>?</span>
         ) : null}
         <span className="sur-card__chip-label">{chip.label}</span>
-        {canEdit ? (
+        {canEdit && !hasChoices ? (
           <span className="sur-card__chip-edit" aria-hidden title="Korrigieren">✎</span>
         ) : null}
-        {chip.needsConfirmation && (onConfirmChip || onCorrectChip) ? (
+        {chip.needsConfirmation && (onConfirmChip || onCorrectChip || hasChoices) ? (
           <span className="sur-card__chip-actions">
             {typeof onConfirmChip === 'function' ? (
               <button
@@ -157,12 +168,18 @@ function renderSurChips(chips, groupId, {
                 Bestätigen
               </button>
             ) : null}
-            {typeof onCorrectChip === 'function' || canEdit ? (
+            {hasChoices || typeof onCorrectChip === 'function' || canEdit ? (
               <button
                 type="button"
                 className="sur-card__chip-action"
+                aria-expanded={choicesOpen || undefined}
+                aria-haspopup={hasChoices ? 'listbox' : undefined}
                 onClick={(e) => {
                   e.stopPropagation();
+                  if (hasChoices && typeof onToggleChipChoices === 'function') {
+                    onToggleChipChoices(chip, key);
+                    return;
+                  }
                   if (canEdit) onEditChip(chip, key);
                   else onCorrectChip?.(chip);
                 }}
@@ -172,7 +189,31 @@ function renderSurChips(chips, groupId, {
             ) : null}
           </span>
         ) : null}
+        {choicesOpen ? (
+          <ul
+            className="sur-card__identity-popover sur-card__chip-popover"
+            role="listbox"
+            aria-label={`${chip.label} wählen`}
+          >
+            {chip.choices.map((choice) => (
+              <li key={choice.id || choice.label}>
+                <button
+                  type="button"
+                  role="option"
+                  className="sur-card__identity-option"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onPickChipChoice?.(chip, choice);
+                  }}
+                >
+                  <span>{choice.label}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+        ) : null}
       </ChipTag>
+      </span>
     );
   });
 }
@@ -354,7 +395,9 @@ export default function SellerUniversalReviewCard({
   const [editingChip, setEditingChip] = useState(null);
   const [editingKey, setEditingKey] = useState(null);
   const [identityChoiceOpen, setIdentityChoiceOpen] = useState(false);
+  const [chipChoiceKey, setChipChoiceKey] = useState(null);
   const identityChoiceRef = useRef(null);
+  const chipChoiceRef = useRef(null);
   const sections = Array.isArray(model?.actionSections) ? model.actionSections : [];
   const groups = Array.isArray(model?.groups) ? model.groups : [];
   const body = useMemo(() => pickPrimaryBody(model), [model]);
@@ -657,7 +700,8 @@ export default function SellerUniversalReviewCard({
 
   useEffect(() => {
     setIdentityChoiceOpen(false);
-  }, [localClarify?.title, localClarify?.field, model?.offerDraftId]);
+    setChipChoiceKey(null);
+  }, [localClarify?.title, localClarify?.field, model?.offerDraftId, model?.groups]);
 
   useEffect(() => {
     if (!identityChoiceOpen) return undefined;
@@ -676,6 +720,58 @@ export default function SellerUniversalReviewCard({
       document.removeEventListener('keydown', handleKey);
     };
   }, [identityChoiceOpen]);
+
+  useEffect(() => {
+    if (!chipChoiceKey) return undefined;
+    function handlePointer(event) {
+      if (chipChoiceRef.current && !chipChoiceRef.current.contains(event.target)) {
+        setChipChoiceKey(null);
+      }
+    }
+    function handleKey(event) {
+      if (event.key === 'Escape') setChipChoiceKey(null);
+    }
+    document.addEventListener('mousedown', handlePointer);
+    document.addEventListener('keydown', handleKey);
+    return () => {
+      document.removeEventListener('mousedown', handlePointer);
+      document.removeEventListener('keydown', handleKey);
+    };
+  }, [chipChoiceKey]);
+
+  function handleChipCorrect(chip) {
+    const choices = Array.isArray(chip?.choices) ? chip.choices : [];
+    if (choices.length) {
+      // Popover wird über onToggleChipChoices geöffnet
+      return;
+    }
+    if (typeof onCorrectChip === 'function') {
+      onCorrectChip(chip);
+      return;
+    }
+    if (typeof onReviewAction === 'function') {
+      onReviewAction({
+        action: 'revise_fact',
+        field: chip.field,
+        label: chip.label,
+      });
+    }
+  }
+
+  function handlePickChipChoice(chip, choice) {
+    setChipChoiceKey(null);
+    if (typeof onReviewAction !== 'function') return;
+    onReviewAction({
+      id: `package-${choice.id || choice.label}`,
+      label: choice.label,
+      action: 'apply_offer_identity_choice',
+      field: chip.field || 'equipmentWish',
+      choiceId: choice.id || null,
+      insertText: choice.insertText || choice.label,
+      dismiss: choice.dismiss === true,
+      replacesLabel: chip.label,
+    });
+  }
 
   return (
     <article
@@ -938,15 +1034,15 @@ export default function SellerUniversalReviewCard({
                   editingKey,
                   onEditChip: liveEditEnabled ? handleEditChip : null,
                   onConfirmChip: typeof onConfirmChip === 'function' ? onConfirmChip : null,
-                  onCorrectChip: typeof onCorrectChip === 'function' ? onCorrectChip : (
-                    typeof onReviewAction === 'function'
-                      ? (chip) => onReviewAction({
-                        action: 'revise_fact',
-                        field: chip.field,
-                        label: chip.label,
-                      })
-                      : null
-                  ),
+                  onCorrectChip: typeof onCorrectChip === 'function' || typeof onReviewAction === 'function'
+                    ? handleChipCorrect
+                    : null,
+                  chipChoiceKey,
+                  chipChoiceRef,
+                  onToggleChipChoices: (chip, key) => {
+                    setChipChoiceKey((prev) => (prev === key ? null : key));
+                  },
+                  onPickChipChoice: handlePickChipChoice,
                 })
                 : null;
               const showItemList = !isCompactReview

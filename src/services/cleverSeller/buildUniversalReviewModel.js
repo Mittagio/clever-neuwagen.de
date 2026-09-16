@@ -17,6 +17,7 @@ import { RATE_AUTHORITY } from './captureThenOffer.js';
 import {
   resolveOfferIdentityClarifyChoices,
   resolveModelKeyFromTurn,
+  resolveUncertainPackageFactChoices,
 } from './applyOfferIdentityChoice.js';
 
 /** Generische Unsicherheits-Narration – nie seller-facing anzeigen. */
@@ -1423,6 +1424,7 @@ export function buildUniversalReviewModel(turn = {}) {
 
   const used = new Set();
   const groups = [];
+  const modelKeyForChoices = resolveModelKeyFromTurn(turn);
   const discountWarnings = (turn.extractedFacts ?? [])
     .filter((f) => f.field === 'discountPercentInvalid')
     .map((f) => f.label || INVALID_DISCOUNT_WARNING);
@@ -1451,17 +1453,24 @@ export function buildUniversalReviewModel(turn = {}) {
         confidence: f.confidence,
       })),
       // Sichere Clever-Chips; Unsichere mit needsConfirmation für Chip-Style (? / dashed)
-      chips: items.map((f) => ({
-        label: f.label,
-        field: f.field,
-        value: f.value ?? f.label,
-        source: f.source === 'manual_edit' ? 'seller' : 'clever',
-        needsConfirmation: Boolean(f.needsConfirmation),
-        editable: Boolean(f.field),
-        title: f.needsConfirmation
-          ? 'Unsicher – bitte diesen Wert prüfen'
-          : 'Antippen zum Korrigieren',
-      })).filter((c) => c.label).slice(0, 6),
+      chips: items.map((f) => {
+        const chip = {
+          label: f.label,
+          field: f.field,
+          value: f.value ?? f.label,
+          source: f.source === 'manual_edit' ? 'seller' : 'clever',
+          needsConfirmation: Boolean(f.needsConfirmation),
+          editable: Boolean(f.field),
+          title: f.needsConfirmation
+            ? 'Unsicher – bitte diesen Wert prüfen'
+            : 'Antippen zum Korrigieren',
+        };
+        if (f.field === 'equipmentWish' && f.needsConfirmation) {
+          const choices = resolveUncertainPackageFactChoices(f, modelKeyForChoices);
+          if (choices.length) chip.choices = choices;
+        }
+        return chip;
+      }).filter((c) => c.label).slice(0, 6),
       line: items.map((f) => f.label).join(' · '),
     });
   }

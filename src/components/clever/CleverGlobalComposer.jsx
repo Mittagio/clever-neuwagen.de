@@ -1166,10 +1166,13 @@ export default function CleverGlobalComposer() {
         label: action.label || action.insertText,
         insertText: action.insertText,
         field: action.field,
+        dismiss: action.dismiss === true,
+        replacesLabel: action.replacesLabel || action.label,
       }, {
         lead,
         field: action.field || 'colorPreference',
         offerDraftId: action.offerDraftId || reviewModel?.offerDraftId || null,
+        replacesLabel: action.replacesLabel || null,
       });
       if (applied.lead?.id && typeof updateLead === 'function') {
         updateLead(applied.lead.id, applied.lead);

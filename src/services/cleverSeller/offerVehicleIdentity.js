@@ -206,8 +206,8 @@ export function parseOfferIdentityFollowUp(text = '') {
   const isPackageRemoveCue = /\b(?:raus|weg|entfernen|ohne)\b/i.test(t)
     || /\b(?:nimm|entferne|streich).{0,40}\b(?:raus|weg|entfernen)\b/i.test(t);
   if (!isPackageRemoveCue) {
-    if (/\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i.test(t)) {
-      packages.push(/connect/i.test(t) ? 'Winter-Connect-Paket' : 'Winterpaket');
+    if (/\bwic\b|\bwinter(?:\s*|-)?(?:connect(?:[\s-]?paket)?|paket)\b/i.test(t)) {
+      packages.push(/wic|connect/i.test(t) ? 'Winter Connect Paket' : 'Winterpaket');
     }
     if (/\bdrive\s*wise(?:\s*-?\s*paket)?\b/i.test(t)) packages.push('DriveWise Paket');
     // Nur „Business Paket“ – nacktes „Business“ ist Kundengruppe (customerType), kein Paket
