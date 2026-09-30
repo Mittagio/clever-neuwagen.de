@@ -3985,6 +3985,7 @@ export default function DealerAiLeadFollowUp({
           workBriefing: sellerWorkBriefing,
           nextBestAction: nextBestSellerAction,
           customerSnapshot,
+          existingVehicle: lead?.crm?.existingVehicle || null,
         }}
         telHref={telHref}
         onPrimaryAction={handleCleverEmpfiehltAction}

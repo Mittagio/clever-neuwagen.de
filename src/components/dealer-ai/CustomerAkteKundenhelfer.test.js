@@ -83,6 +83,8 @@ assert.ok(empfiehltSource.includes('clever-empfiehlt__media'), 'Stage: Fahrzeugb
 assert.ok(empfiehltSource.includes('clever-empfiehlt-activities'), 'Aktivitäten-Zeile unter Stage');
 assert.ok(empfiehltSource.includes('clever-empfiehlt__disclosure'), 'Details/Historie als Disclosure');
 assert.ok(empfiehltSource.includes('presentCleverStageHero'), 'Offer-Hero Presenter');
+assert.ok(empfiehltSource.includes('existingVehicle: view.existingVehicle'), 'Offer-Kundenbild: existingVehicle aus CRM');
+assert.ok(followUpSource.includes('existingVehicle: lead?.crm?.existingVehicle'), 'FollowUp reicht crm.existingVehicle durch');
 assert.ok(empfiehltSource.includes('clever-stage-kundenbild'), 'Kompaktes Kundenbild am Offer');
 assert.ok(empfiehltSource.includes('Alle Kundennotizen'), 'Kundenbild-Popover mit Notizen-Link');
 assert.ok(empfiehltSource.includes('slice(0, 5)'), 'Timeline max. 5 Aktivitäten');

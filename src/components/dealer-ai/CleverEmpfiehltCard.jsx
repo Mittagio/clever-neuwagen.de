@@ -263,6 +263,7 @@ export default function CleverEmpfiehltCard({
     workBriefing: view.workBriefing,
     activities,
     customerSnapshot: view.customerSnapshot || null,
+    existingVehicle: view.existingVehicle || null,
   });
   const customerContext = hero.customerContext?.hasData ? hero.customerContext : null;
   const briefingRows = (!hero.offerMode && briefingSections)

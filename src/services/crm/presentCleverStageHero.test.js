@@ -107,6 +107,110 @@ describe('presentCleverStageHero', () => {
     assert.ok(!hero.customerContext.groups.bedarf.some((l) => /Winter Connect/i.test(l)));
   });
 
+  it('Matthias Wittig: Hund einmal, EV2 nicht als altes Auto, Elektro nicht kompakt', () => {
+    const hero = presentCleverStageHero({
+      snapshot: {
+        title: 'Kia EV2 Earth',
+        colorLabel: 'Schneeweiß Uni',
+        termLabel: '48 M',
+        mileageLabel: '10.000 km',
+        downPaymentLabel: '5.000 €',
+        rateValue: '335,86 €',
+        rateUnit: '/Monat',
+      },
+      workBriefing: {
+        sections: {
+          customerPicture: 'Elektro · 1 Hund · 2 Kinder · Hund',
+          customerWants: 'EV2 · Earth',
+          currentVehicle: 'Kia EV2',
+        },
+      },
+      customerSnapshot: {
+        soft: {
+          chips: [
+            { label: 'Elektro', groupId: 'fahrzeugpraeferenz', editKey: 'fuel' },
+            { label: '1 Hund', groupId: 'persoenliches', editKey: 'dog' },
+            { label: '2 Kinder', groupId: 'persoenliches', editKey: 'children' },
+            { label: 'Hund', groupId: 'persoenliches', editKey: 'dog' },
+            { label: 'pet = dog', groupId: 'persoenliches', editKey: 'pet' },
+            { label: 'Altes Auto: Kia EV2', groupId: 'persoenliches', editKey: 'tradeIn' },
+            { label: 'Kia EV2 Earth', groupId: 'fahrzeugpraeferenz', editKey: 'vehicleInterest' },
+          ],
+        },
+      },
+    });
+
+    assert.deepEqual(hero.customerContext.visible, ['2 Kinder', '1 Hund']);
+    assert.equal(hero.customerContext.visible.filter((l) => /Hund/i.test(l)).length, 1);
+    assert.ok(!hero.customerContext.visible.some((l) => /Elektro/i.test(l)));
+    assert.ok(!hero.customerContext.trigger.includes('Altes Auto'));
+    assert.ok(!hero.customerContext.trigger.includes('EV2'));
+    assert.ok(!hero.customerContext.groups.rahmen.some((l) => /EV2/i.test(l)));
+    assert.ok(!hero.customerContext.groups.bedarf.some((l) => /^Hund$/i.test(l)));
+    assert.ok(hero.customerContext.groups.bedarf.some((l) => /1 Hund/i.test(l)));
+    assert.ok(hero.customerContext.groups.bedarf.some((l) => /Elektro/i.test(l)));
+    assert.equal(hero.customerContext.overflow, 1);
+    assert.match(hero.customerContext.trigger, /\+1/);
+  });
+
+  it('zeigt bestehendes Auto nur aus echtem existingVehicle, nicht aus dem Angebot', () => {
+    const hero = presentCleverStageHero({
+      snapshot: {
+        title: 'Kia EV2 Earth',
+        colorLabel: 'Schneeweiß Uni',
+        termLabel: '48 M',
+        mileageLabel: '10.000 km',
+        downPaymentLabel: '0 €',
+        rateValue: '399 €',
+        rateUnit: '/Monat',
+      },
+      workBriefing: {
+        sections: {
+          customerPicture: '2 Kinder · 1 Hund',
+          customerWants: 'EV2 · Earth',
+        },
+      },
+      customerSnapshot: {
+        soft: {
+          chips: [
+            { label: '2 Kinder', groupId: 'persoenliches', editKey: 'children' },
+            { label: 'Kinder: 2', groupId: 'persoenliches', editKey: 'children' },
+            { label: '1 Hund', groupId: 'persoenliches', editKey: 'dog' },
+            { label: 'Hund', groupId: 'persoenliches', editKey: 'dog' },
+            { label: 'möchte EV2', groupId: 'fahrzeugpraeferenz' },
+            { label: 'VW Golf (GW)', groupId: 'bestand', editKey: 'tradeIn' },
+          ],
+        },
+      },
+      existingVehicle: { make: 'VW', model: 'Golf', label: 'VW Golf' },
+    });
+
+    assert.ok(hero.customerContext.visible.includes('2 Kinder'));
+    assert.ok(hero.customerContext.visible.includes('1 Hund'));
+    assert.ok(hero.customerContext.visible.includes('Aktuelles Auto: VW Golf'));
+    assert.ok(!hero.customerContext.visible.some((l) => /EV2/i.test(l)));
+    assert.ok(!hero.customerContext.trigger.includes('Aktuelles Auto: EV2'));
+    assert.ok(!hero.customerContext.trigger.includes('Altes Auto'));
+    assert.equal(hero.customerContext.visible.filter((l) => /Hund/i.test(l)).length, 1);
+    assert.equal(hero.customerContext.visible.filter((l) => /Kinder/i.test(l)).length, 1);
+  });
+
+  it('verwirft ein Angebotsmodell, auch wenn es fälschlich als existingVehicle ankommt', () => {
+    const hero = presentCleverStageHero({
+      snapshot: { title: 'Kia EV2 Earth' },
+      customerSnapshot: {
+        chips: [
+          { label: 'Altes Auto: Kia EV2', editKey: 'existingVehicle' },
+        ],
+      },
+      existingVehicle: { make: 'Kia', model: 'EV2', label: 'Kia EV2' },
+    });
+
+    assert.equal(hero.customerContext.hasData, false);
+    assert.ok(!hero.customerContext.trigger.includes('EV2'));
+  });
+
+
   it('hält echte offene Punkte lokal, wenn keine Farbe im Hero steht', () => {
     const points = presentLocalOpenPoints('Variante prüfen · Paket prüfen', { colorShown: false });
     assert.equal(points.length, 2);
