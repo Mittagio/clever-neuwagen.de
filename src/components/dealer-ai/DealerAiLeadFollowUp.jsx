@@ -3984,6 +3984,7 @@ export default function DealerAiLeadFollowUp({
           closureLabel: undefined,
           workBriefing: sellerWorkBriefing,
           nextBestAction: nextBestSellerAction,
+          customerSnapshot,
         }}
         telHref={telHref}
         onPrimaryAction={handleCleverEmpfiehltAction}

@@ -20,6 +20,7 @@ import { PORTAL_ACCESS_STATUS, getCustomerPortalAccess } from './customerPortalA
 import { INTEREST_STATUS, getCustomerOfferInteraction } from '../customerOfferInteraction.js';
 import { getVehicleImageUrl } from '../vehicle/vehicleImageService.js';
 import { buildAkteNextStepSurface } from './buildAkteNextStepSurface.js';
+import { resolveActiveOfferDraft } from '../cleverSeller/cleverWorkingDraft.js';
 
 function clampScore(value) {
   return Math.max(0, Math.min(100, Math.round(value)));
@@ -317,6 +318,49 @@ export function buildOfferSnapshot(context = {}) {
   const rateValue = rateParts ? rateParts[1].trim() : (rateRaw || null);
   const rateUnit = rateParts ? rateParts[2].replace(/\s+/g, '') : null;
 
+  const lead = context.lead || {};
+  const config = (lead.crm?.vehicleConfigurations || []).find((c) => c?.id === card.id) || {};
+  const draft = resolveActiveOfferDraft({
+    lead,
+    workingMemory: lead.crm?.cleverWorkingState,
+  });
+  const identity = draft?.vehicleIdentityDraft || {};
+  const commercial = draft?.commercialScenario || {};
+  const colorLabel = String(
+    card.colorLabel
+    || card.color
+    || config.colorLabel
+    || config.color
+    || identity.color?.canonical
+    || identity.color?.raw
+    || '',
+  ).trim() || null;
+  const downRaw = Number(
+    card.downPayment
+    ?? config.downPayment
+    ?? config.leasingData?.downPayment
+    ?? commercial.downPayment
+    ?? lead.wish?.downPayment,
+  );
+  const downPaymentLabel = Number.isFinite(downRaw)
+    ? `${downRaw.toLocaleString('de-DE')} €`
+    : null;
+  const packageLabels = [
+    ...(Array.isArray(card.packageLabels) ? card.packageLabels : []),
+    ...(Array.isArray(config.packageLabels) ? config.packageLabels : []),
+    ...((identity.packages || []).map((p) => p?.canonical || p?.raw || p?.label).filter(Boolean)),
+  ];
+  const listPrice = Number(
+    card.listPrice
+    ?? config.listPrice
+    ?? config.boardOffer?.payment?.listPrice
+    ?? null,
+  );
+  const powertrainLabel = identity.powertrainVariant?.canonical
+    || identity.powertrainVariant?.raw
+    || card.engine
+    || null;
+
   return {
     cardId: card.id || null,
     title,
@@ -325,15 +369,20 @@ export function buildOfferSnapshot(context = {}) {
     termLabel: termMonths ? `${termMonths} M` : null,
     termMonths,
     mileageLabel: mileage ? `${Number(mileage).toLocaleString('de-DE')} km` : null,
-    // Kein „Laufleistung“-Hinweis – Grid bleibt LAUFZEIT / KM / RATE
     mileageHint: null,
     mileagePerYear: mileage,
     rateLabel,
     rateValue,
     rateUnit,
+    downPaymentLabel,
+    colorLabel,
+    packageLabels,
+    listPriceLabel: Number.isFinite(listPrice) && listPrice > 0
+      ? `${listPrice.toLocaleString('de-DE')} €`
+      : null,
+    powertrainLabel,
     availabilityLabel,
     imageUrl,
-    // Kein „Leasingangebot“-Untertitel – Titel + Verfügbar-Badge reichen
     subtitle: null,
   };
 }

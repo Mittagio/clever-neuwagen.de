@@ -758,6 +758,172 @@ button.clever-empfiehlt__activity:focus-visible {
   font-weight: 450;
 }
 
+.clever-empfiehlt--hierarchy .clever-empfiehlt__terms--four {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+}
+
+.clever-empfiehlt__offer-color {
+  margin: 4px 0 0;
+  font-size: 0.92rem;
+  font-weight: 450;
+  color: #3f3d39;
+}
+
+.clever-empfiehlt__open-point {
+  margin: 0;
+  font-size: 0.78rem;
+  font-weight: 500;
+  color: #6f6b64;
+}
+
+.clever-empfiehlt__kundenbild-trigger {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+  text-align: left;
+}
+
+.clever-empfiehlt__kundenbild-kicker {
+  font-size: 0.62rem;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8f8a82;
+}
+
+.clever-empfiehlt__kundenbild-line {
+  font-size: 0.8rem;
+  font-weight: 450;
+  color: #5c5852;
+  line-height: 1.35;
+}
+
+.clever-empfiehlt__work-main > .clever-empfiehlt__disclosure {
+  justify-content: flex-start;
+  margin-top: 2px;
+}
+
+.clever-empfiehlt__work-main > .clever-empfiehlt__disclosure .clever-empfiehlt__disclosure-trigger {
+  padding: 0;
+  color: inherit;
+}
+
+.clever-empfiehlt__disclosure {
+  position: relative;
+  display: flex;
+  justify-content: center;
+}
+
+.clever-empfiehlt__disclosure--stretch {
+  display: block;
+}
+
+.clever-empfiehlt__disclosure-trigger {
+  margin: 0;
+  padding: 2px 4px;
+  border: none;
+  background: transparent;
+  color: #8f8a82;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  cursor: pointer;
+  text-align: left;
+}
+
+.clever-empfiehlt__disclosure-trigger:hover,
+.clever-empfiehlt__disclosure-trigger:focus-visible {
+  color: #5c5852;
+}
+
+.clever-empfiehlt__popover {
+  position: absolute;
+  z-index: 40;
+  left: 50%;
+  top: auto;
+  bottom: calc(100% + 8px);
+  transform: translateX(-50%);
+  min-width: 220px;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 12px 14px 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(28, 27, 25, 0.1);
+  background: #fffcf9;
+  box-shadow: 0 8px 24px rgba(28, 27, 25, 0.08);
+}
+
+.clever-empfiehlt__popover--anchored {
+  transform: none;
+  max-width: min(360px, calc(100vw - 24px));
+}
+
+.clever-empfiehlt__popover-title {
+  margin: 0 0 8px;
+  font-size: 0.68rem;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8f8a82;
+}
+
+.clever-empfiehlt__popover-list + .clever-empfiehlt__popover-title {
+  margin-top: 10px;
+}
+
+.clever-empfiehlt__popover-meta {
+  margin: 10px 0 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.clever-empfiehlt__popover-meta dt {
+  margin: 0;
+  font-size: 0.62rem;
+  font-weight: 550;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #8f8a82;
+}
+
+.clever-empfiehlt__popover-meta dd {
+  margin: 0;
+  font-size: 0.82rem;
+  color: #1c1b19;
+}
+
+.clever-empfiehlt__activities--compact {
+  margin-top: 2px;
+  padding: 0 4px;
+}
+
+.clever-empfiehlt__activities--compact .clever-empfiehlt__disclosure-trigger {
+  width: 100%;
+  color: #8f8a82;
+  font-size: 0.72rem;
+}
+
+@media (max-width: 720px) {
+  .clever-empfiehlt--hierarchy .clever-empfiehlt__terms,
+  .clever-empfiehlt--hierarchy .clever-empfiehlt__terms--four {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clever-empfiehlt__popover {
+    position: fixed !important;
+    left: 12px !important;
+    right: 12px !important;
+    bottom: 88px !important;
+    top: auto !important;
+    width: auto !important;
+    transform: none !important;
+    max-width: none;
+    max-height: min(52vh, 360px);
+    overflow: auto;
+  }
+}
+
 .clever-empfiehlt__link--quiet {
   align-self: flex-start;
   margin-top: 2px;
@@ -815,6 +981,28 @@ button.clever-empfiehlt__activity:focus-visible {
   font-weight: 500;
   text-decoration: none;
   cursor: pointer;
+}
+
+/* Phase 2: Details = lesender Zugang, keine Pflege-Primary */
+.clever-empfiehlt__details-link {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 2px auto 0;
+  padding: 2px 6px;
+  border: none;
+  background: transparent;
+  color: #94a3b8;
+  font: inherit;
+  font-size: 0.78rem;
+  font-weight: 500;
+  text-decoration: none;
+  cursor: pointer;
+}
+
+.clever-empfiehlt__details-link:hover,
+.clever-empfiehlt__details-link:focus-visible {
+  color: #64748b;
 }
 
 .clever-empfiehlt__secondary-link:hover {

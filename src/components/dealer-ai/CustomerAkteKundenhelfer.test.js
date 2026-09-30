@@ -81,8 +81,11 @@ assert.ok(empfiehltSource.includes('clever-empfiehlt__recommend-label'), 'Ruhige
 assert.ok(empfiehltSource.includes('clever-empfiehlt__secondary-link'), 'Max. 1 sekundärer Link');
 assert.ok(empfiehltSource.includes('clever-empfiehlt__media'), 'Stage: Fahrzeugbild-Region');
 assert.ok(empfiehltSource.includes('clever-empfiehlt-activities'), 'Aktivitäten-Zeile unter Stage');
-assert.ok(empfiehltSource.includes('activities--timeline'), 'Aktivitäten als Timeline');
-assert.ok(empfiehltSource.includes('slice(0, 3)'), 'Timeline max. 3 Aktivitäten');
+assert.ok(empfiehltSource.includes('clever-empfiehlt__disclosure'), 'Details/Historie als Disclosure');
+assert.ok(empfiehltSource.includes('presentCleverStageHero'), 'Offer-Hero Presenter');
+assert.ok(empfiehltSource.includes('clever-stage-kundenbild'), 'Kompaktes Kundenbild am Offer');
+assert.ok(empfiehltSource.includes('Alle Kundennotizen'), 'Kundenbild-Popover mit Notizen-Link');
+assert.ok(empfiehltSource.includes('slice(0, 5)'), 'Timeline max. 5 Aktivitäten');
 assert.ok(empfiehltSource.includes('IconSparkle'), 'Primary CTA mit Sparkles');
 assert.ok(empfiehltSource.includes('IconPaperPlane'), 'Send-CTA mit Paper-Plane');
 assert.ok(empfiehltSource.includes('title={reasonTitle}'), 'reasonSource als Button-Tooltip');
@@ -108,9 +111,10 @@ assert.ok(
   'Kein Kundenwissen-Stift über den Buckets',
 );
 assert.ok(!/>\s*Konditionen bearbeiten\s*</.test(kundenbildSource), 'Kein sichtbarer Konditionen-Text');
-assert.ok(kundenbildSource.includes('Alles anzeigen'), 'Alles-anzeigen-Link');
-assert.ok(kundenbildSource.includes('Bearbeiten'), 'Bearbeiten-Link wenn leer');
-assert.ok(kundenbildSource.includes('+ Wissen ergänzen'), 'Wissen ergänzen statt Chip-Picker');
+assert.ok(kundenbildSource.includes("'Details'"), 'Details-Link');
+assert.ok(!kundenbildSource.includes('Alles anzeigen'), 'Kein Alles-anzeigen-Link mehr');
+assert.ok(!kundenbildSource.includes("'Bearbeiten'"), 'Kein Bearbeiten-Link als First-Screen');
+assert.ok(kundenbildSource.includes('+ Wissen ergänzen'), 'Wissen ergänzen im Detail-Panel');
 assert.ok(!kundenbildSource.includes('GroupCategoryIcon'), 'Keine Soft-Kategorie-Icons');
 assert.ok(!kundenbildSource.includes('SoftKnowledgeGroup'), 'Keine Soft-Bucket-Boxen');
 assert.ok(kundenbildSource.includes('title={ariaLabel}'), 'Edit-Links mit Hover-Tooltip');

@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { persistLocalJson } from '../services/persistLocalJson.js';
 import { DEMO_OFFERS } from '../data/demoOffers.js';
 import {
   buildOfferUrl,
@@ -50,7 +51,7 @@ function loadOffers() {
 }
 
 function saveOffers(offers) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(offers));
+  persistLocalJson(STORAGE_KEY, offers);
 }
 
 export function OffersProvider({ children }) {

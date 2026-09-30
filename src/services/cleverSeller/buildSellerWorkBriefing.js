@@ -13,6 +13,7 @@ import {
 } from './determineNextBestSellerAction.js';
 import { listCustomerVehicleTracks } from '../crm/vehicleTrack.js';
 import { resolveActiveOfferDraft } from './cleverWorkingDraft.js';
+import { SELLER_FACT_SOURCE } from './sellerFactTypes.js';
 
 function pickFact(facts, field) {
   return (facts || []).find((f) => f?.field === field && !f?.value?.remove) || null;
@@ -528,12 +529,22 @@ function formatClarifyLine(facts = [], draft = null, lead = null) {
   }
 
   const colorSlot = draft?.vehicleIdentityDraft?.color;
+  const colorFact = pickFact(facts, 'colorPreference');
+  const colorFromPdf = colorFact?.source === SELLER_FACT_SOURCE.OFFER_PDF
+    || colorSlot?.source === SELLER_FACT_SOURCE.OFFER_PDF
+    || colorSlot?.source === 'pdf';
+  const colorSettled = colorSlot?.status === 'resolved'
+    || colorSlot?.status === 'captured'
+    || colorFromPdf;
   if (
-    colorSlot?.status === 'needs_refinement'
-    || colorSlot?.status === 'open'
-    || pickFact(facts, 'colorPreference')?.needsConfirmation
+    !colorSettled
+    && (
+      colorSlot?.status === 'needs_refinement'
+      || colorSlot?.status === 'open'
+      || colorFact?.needsConfirmation
+    )
   ) {
-    if (colorSlot?.raw || pickFact(facts, 'colorPreference')) {
+    if (colorSlot?.raw || colorFact) {
       push('Farbe prüfen');
     }
   }

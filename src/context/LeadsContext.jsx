@@ -1,4 +1,5 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
+import { persistLocalJson } from '../services/persistLocalJson.js';
 import { DEMO_LEADS, PILOT_DEMO_LEAD, PILOT_LEAD_ID } from '../data/demoLeads.js';
 import { PILOT_DEALER_ID, PILOT_LIVE } from '../config/pilotLive.js';
 import { LEAD_STATUS } from '../data/leadTypes.js';
@@ -100,7 +101,7 @@ function loadLeads() {
 }
 
 function saveLeads(leads) {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+  persistLocalJson(STORAGE_KEY, leads);
 }
 
 function historyEntry(text, type = 'system', meta = {}) {
