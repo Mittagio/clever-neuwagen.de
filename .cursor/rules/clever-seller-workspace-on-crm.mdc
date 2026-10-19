@@ -1,0 +1,40 @@
+---
+description: Clever ist die AI-Verkaufsschicht auf Kia Salesforce/MySales, nicht ein zweites CRM
+alwaysApply: true
+---
+
+# PRODUKT-FREEZE: SELLER WORKSPACE AUF DEM CRM
+
+**Doc:** `docs/CLEVER_SELLER_WORKSPACE_ON_CRM.md` (Quelle der Wahrheit)
+
+## Satz
+
+> Clever ersetzt nicht das Händler-CRM. Clever bedient es für den Verkäufer und führt den Verkaufsprozess bis zum Abschluss.
+
+Kia Salesforce / MySales = System of Record (Kunde, Kontakt, Leads, Historie, Marketing, Rechte).  
+Clever = Seller Workspace: Diktat → Draft → PDF → Angebot → Kunde → Reaktion → Änderung → Abschluss.
+
+## Owned Demand MVP V1 — pilotfähig
+
+Eingefroren. Eine veröffentlichte Händlerkondition bleibt: Dealer Condition → Fahrzeugseite → Lead → Concept Draft → bestehender Offer Flow.
+
+- Rabatt einmal setzen, derselbe Wert auf Seite, Lead und Draft
+- Web-Schätzrate ist keine Offer Rate; `rate` bleibt null bis PDF oder Calculator
+- Offer Loop nicht erweitern
+- Salesforce und CRM-Ausbau jetzt nicht priorisieren
+- UI ruft nur `publishOwnedVehicleOffer` auf
+
+## Vor jeder neuen Funktion
+
+1. Gehört das in den Verkaufsloop? Dann härten, am bestehenden Draft und Track.
+2. Ist es Kundenstamm, Marketing, Scoring, Reklamation, Dublette, 360°-Datenbank? Dann nicht bauen.
+3. Persönlicher Kontext bleibt kompakt (`sellerInsights`, Notiz). Kein neues CRM-Feld pro Lebensdetail.
+4. Ergebnisse, die ins Händler-CRM gehören, als Activity/Status denken — nicht als zweiten Kundenstamm.
+5. Kein Integrations-Bau, solange Lese- und Schreibzugriff auf MySales ungeklärt ist. Der Loop bleibt lokal vollständig.
+6. Owned Demand nicht um Lager, Kampagnen oder ein zweites Listing erweitern.
+
+## Nicht
+
+- Kein „besseres CRM“ neben Salesforce
+- Keine Marketing-Automation, kein Lead-Scoring, keine Reklamationsverwaltung
+- Keine Feld-für-Feld-Synchronisation von Working Draft, Zero-Loss-Notizen oder Composer-Session

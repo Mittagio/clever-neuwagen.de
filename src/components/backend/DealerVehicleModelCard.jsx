@@ -1,7 +1,16 @@
+import { Link } from 'react-router-dom';
 import VehicleImage from '../shared/VehicleImage.jsx';
 import './DealerVehicleManagement.css';
 
-export default function DealerVehicleModelCard({ card, model, onManage }) {
+export default function DealerVehicleModelCard({
+  card,
+  model,
+  onManage,
+  canPublishOwned = false,
+  ownedPublished = false,
+  ownedPublicPath = null,
+  onPublishOwned,
+}) {
   const statusLabel = card.active ? 'Aktiv' : 'Inaktiv';
   const statusTone = card.active ? 'active' : 'inactive';
 
@@ -52,9 +61,26 @@ export default function DealerVehicleModelCard({ card, model, onManage }) {
           </p>
         )}
 
+        {canPublishOwned && !ownedPublished && (
+          <button
+            type="button"
+            className="dvm-model-card__cta"
+            onClick={() => onPublishOwned?.(model)}
+          >
+            Veröffentlichen
+          </button>
+        )}
+        {ownedPublished && (
+          <p className="dvm-model-card__actions">Veröffentlicht</p>
+        )}
+        {canPublishOwned && ownedPublished && ownedPublicPath && (
+          <Link className="dvm-model-card__cta" to={ownedPublicPath}>
+            Öffentliche Seite ansehen
+          </Link>
+        )}
         <button
           type="button"
-          className="dvm-model-card__cta"
+          className={canPublishOwned ? 'dvm-back' : 'dvm-model-card__cta'}
           onClick={() => onManage?.(model)}
         >
           Verwalten

@@ -32,6 +32,8 @@ import { getDisplayPrice } from '../services/pricing/pricingResolver.js';
 import { useDealerGoogleReviewsBatch, enrichOffersWithGoogle } from './useDealerGoogleReviews.js';
 import { resolveVehicleBySlug } from '../services/advisor/advisorVehicleClient.js';
 import { PILOT_DEALER_ID } from '../config/pilotLive.js';
+import { usePublishedDealerConditions } from '../context/DealerConditionsContext.jsx';
+import { presentOwnedVehicle } from '../services/dealer/ownedDemandListing.js';
 
 const DEFAULT_TERM = 48;
 const DEFAULT_MILEAGE = 10000;
@@ -40,7 +42,14 @@ export function useVehicleDetailController({ slug, searchParams }) {
   const filters = useMemo(() => filtersFromSearchParams(searchParams), [searchParams]);
   const configMode = searchParams.get('wunsch') === '1' || filters.features.length > 0 || !!filters.query;
 
-  const [vehicle, setVehicle] = useState(null);
+  const [poolVehicle, setPoolVehicle] = useState(null);
+  const { publishedConditions } = usePublishedDealerConditions(
+    poolVehicle?.dealerSlug || PILOT_DEALER_ID,
+  );
+  const vehicle = useMemo(
+    () => presentOwnedVehicle(poolVehicle, publishedConditions),
+    [poolVehicle, publishedConditions],
+  );
   const [advisorMatch, setAdvisorMatch] = useState(null);
   const [vehicleLoading, setVehicleLoading] = useState(true);
   const [vehicleSource, setVehicleSource] = useState(null);
@@ -67,13 +76,13 @@ export function useVehicleDetailController({ slug, searchParams }) {
       type: filters.type ?? null,
     }).then((result) => {
       if (cancelled) return;
-      setVehicle(result.vehicle);
+      setPoolVehicle(result.vehicle);
       setAdvisorMatch(result.match);
       setVehicleSource(result.source);
       setVehicleLoading(false);
     }).catch(() => {
       if (!cancelled) {
-        setVehicle(null);
+        setPoolVehicle(null);
         setAdvisorMatch(null);
         setVehicleSource('none');
         setVehicleLoading(false);
@@ -105,11 +114,18 @@ export function useVehicleDetailController({ slug, searchParams }) {
   useEffect(() => {
     if (!vehicle) return;
     setTrimOverride(null);
+    const commercial = vehicle.ownedCommercial;
     setDetailSelection(createInitialDetailSelection(vehicle, {
       trim: listingTrimId,
       selectedFeatures: initialWishIds,
+      ...(commercial ? {
+        paymentMode: commercial.paymentType === 'finance' ? 'financing' : (commercial.paymentType || 'leasing'),
+        termMonths: commercial.termMonths ?? 48,
+        mileagePerYear: commercial.annualMileage ?? DEFAULT_MILEAGE,
+        downPayment: commercial.downPayment ?? 0,
+      } : {}),
     }));
-  }, [vehicle?.slug, listingTrimId, initialWishIds.join(',')]);
+  }, [vehicle?.slug, vehicle?.ownedCommercial?.id, listingTrimId, initialWishIds.join(',')]);
   const [selectedDealerSlug, setSelectedDealerSlug] = useState(null);
   const [priceDrawerOpen, setPriceDrawerOpen] = useState(false);
   const [compareOpen, setCompareOpen] = useState(false);
@@ -189,11 +205,24 @@ export function useVehicleDetailController({ slug, searchParams }) {
   );
 
   const rankedDealerOffers = useMemo(() => {
+    const applyOwned = (offers) => {
+      const commercial = vehicle?.ownedCommercial;
+      if (!commercial) return offers;
+      return offers.map((offer) => (
+        !vehicle.dealerSlug || offer.dealerSlug === vehicle.dealerSlug
+          ? {
+              ...offer,
+              discountPercent: commercial.discountPercent,
+              cashPrice: vehicle.cashPrice ?? offer.cashPrice,
+            }
+          : offer
+      ));
+    };
     if (baseRankedOffers.length) {
-      return rankDealerOffers(enrichOffersWithGoogle(baseRankedOffers, reviewsBySlug));
+      return applyOwned(rankDealerOffers(enrichOffersWithGoogle(baseRankedOffers, reviewsBySlug)));
     }
     if (!vehicle) return [];
-    return [{
+    return applyOwned([{
       dealerName: vehicle.dealerName,
       dealerSlug: vehicle.dealerSlug,
       city: vehicle.city,
@@ -206,7 +235,7 @@ export function useVehicleDetailController({ slug, searchParams }) {
       deliveryTime: vehicle.deliveryTime,
       discountPercent: vehicle.discountPercent,
       score: 85,
-    }];
+    }]);
   }, [baseRankedOffers, reviewsBySlug, vehicle]);
 
   const activeDealer = useMemo(() => {
@@ -257,11 +286,24 @@ export function useVehicleDetailController({ slug, searchParams }) {
 
   const displayPrice = useMemo(() => {
     if (!vehicle) return null;
-    return getDisplayPrice(
+    const price = getDisplayPrice(
       { ...detailSelection, trim: trimId },
       activeDealer,
       { basePricing, vehicle },
     );
+    const discount = vehicle.ownedCommercial?.discountPercent;
+    if (!price || discount == null) return price;
+    const bit = `${discount} % Rabatt`;
+    const withBit = (line) => (line && !String(line).includes(bit) ? `${line} · ${bit}` : line);
+    return {
+      ...price,
+      subtitle: withBit(price.subtitle),
+      raw: {
+        ...(price.raw || {}),
+        discountPercent: discount,
+        subtitle: withBit(price.raw?.subtitle),
+      },
+    };
   }, [vehicle, detailSelection, trimId, activeDealer, basePricing]);
 
   const displayTitle = useMemo(() => {
@@ -443,7 +485,10 @@ export function useVehicleDetailController({ slug, searchParams }) {
     trimId,
     trimName,
     effectiveColorId,
-    discountPercent: basePricing?.discountPercent ?? vehicle?.discountPercent ?? 0,
+    discountPercent: vehicle?.ownedCommercial?.discountPercent
+      ?? basePricing?.discountPercent
+      ?? vehicle?.discountPercent
+      ?? 0,
     priceDrawerOpen,
     setPriceDrawerOpen,
     compareOpen,

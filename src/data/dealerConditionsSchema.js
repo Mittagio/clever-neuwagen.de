@@ -186,6 +186,7 @@ export function buildDealerConditionsFromLegacy(legacy = {}) {
     inventoryVehicles: legacy.inventoryVehicles ?? legacy.inventory ?? [],
 
     modelSettingsByModel: legacy.modelSettingsByModel ?? {},
+    ownedVehicleOffer: legacy.ownedVehicleOffer ?? null,
 
     lastPublishedAt: legacy.lastPublishedAt ?? legacy.publishedAt ?? null,
     dealerPageOnline: legacy.dealerPageOnline ?? legacy.published ?? true,

@@ -28,6 +28,7 @@ alwaysApply: true
 - Deterministik = Validator, Safety, Units, Fast Path, Fallback.
 - Zero-Loss bleibt verbindlich.
 - Keine zweite Business Engine – Legacy-Services als Tools wrappen.
-- UI Akte/Chips/Dashboard zunächst einfrieren; Conversation Loop zuerst.
+- Kein paralleler UI-Redesign-Track; Seller-Hierarchie folgt **UX Manifest V1**.
+- Kein zweites CRM. Salesforce/MySales = System of Record. Clever = Verkaufsschicht. Siehe `clever-seller-workspace-on-crm.mdc`.
 
-Siehe: [docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md](../../docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md)
+Siehe: [docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md](../../docs/CLEVER_2_0_ASSISTANT_GAP_AUDIT.md) · [docs/CLEVER_UX_MANIFEST_V1.md](../../docs/CLEVER_UX_MANIFEST_V1.md) · Rule `clever-ux-manifest-v1.mdc`

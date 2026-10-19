@@ -14,6 +14,7 @@ import {
 import { appendChangeHistory } from '../services/dealer/dealerChangeHistory.js';
 import { archiveModelSettingsForMonth } from '../services/dealer/dealerCopyConditions.js';
 import { resolveModelSettings } from '../services/dealer/dealerVehicleManagement.js';
+import { publishOwnedVehicleOffer } from '../services/dealer/ownedDemandListing.js';
 
 const STORAGE_KEY = 'clever-neuwagen-dealer-store-v2';
 const STORE_VERSION = 2;
@@ -264,6 +265,33 @@ export function DealerConditionsProvider({ children }) {
     hasUnpublishedChanges: (dealerId = DEFAULT_DEALER_ID) => hasDraftChanges(dealerId),
     updateDealerConditions,
     publishDealerChanges,
+    commitOwnedVehicleOffer(spec, dealerId = DEFAULT_DEALER_ID) {
+      let publicPath = null;
+      setStore((prev) => {
+        const pair = getDealerPair(prev, dealerId);
+        const next = publishOwnedVehicleOffer(pair.draftConditions, spec);
+        publicPath = next.ownedVehicleOffer?.slug
+          ? `/fahrzeug/${next.ownedVehicleOffer.slug}`
+          : null;
+        const published = {
+          ...next,
+          syncStatus: 'synchronized',
+          dealerPageOnline: true,
+        };
+        const copy = deepClone(published);
+        return {
+          ...prev,
+          dealers: {
+            ...prev.dealers,
+            [dealerId]: {
+              draftConditions: copy,
+              publishedConditions: deepClone(copy),
+            },
+          },
+        };
+      });
+      return publicPath;
+    },
     discardDraft,
 
     getConditionsForModel(modelId = 'sportage', view = 'published') {

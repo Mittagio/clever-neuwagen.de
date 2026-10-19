@@ -197,6 +197,8 @@ Briefing
 - AI-Credit-Ökosystem  
 - Dialer-first CRM  
 
+Systemgrenze gegenüber Kia: [Seller Workspace auf dem CRM](CLEVER_SELLER_WORKSPACE_ON_CRM.md). Clever bedient Salesforce für den Verkäufer. Clever wird kein zweites CRM.
+
 ---
 
 ## Cursor-Check vor jeder UI-Änderung

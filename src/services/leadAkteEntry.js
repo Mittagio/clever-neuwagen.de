@@ -12,6 +12,7 @@ const SOURCE_ALIASES = {
   dealerJourney: 'Landingpage',
   dealerSearch: 'Landingpage',
   marketplace: 'Fahrzeugseite',
+  owned_dealer_site: 'Eigene Händlerseite',
   offer: 'Angebotslink',
   equipment: 'Ausstattungsberater',
   berater: 'Ausstattungsberater',

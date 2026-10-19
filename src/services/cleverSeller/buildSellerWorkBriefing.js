@@ -291,6 +291,11 @@ function formatLeasingLine(facts = [], lead = null) {
     }
   }
 
+  const ownedDiscount = lead?.ownedCommercial?.discountPercent;
+  if (ownedDiscount != null && Number(ownedDiscount) > 0) {
+    parts.push(`${Number(ownedDiscount)} % Rabatt`);
+  }
+
   const az = down?.value ?? wish.downPayment ?? null;
   if (purchase?.value != null && Number.isFinite(Number(purchase.value))) {
     parts.push(purchase.label || `bis ${Number(purchase.value).toLocaleString('de-DE')} €`);
@@ -705,6 +710,12 @@ export function buildSellerWorkBriefing(params = {}) {
   }
 
   const lines = [];
+  if (lead?.source === 'owned_dealer_site') {
+    const modelName = String(
+      lead.ownedCommercial?.model || lead.vehicle?.model || 'Fahrzeug',
+    ).replace(/^Kia\s+/i, '');
+    lines.push(`Anfrage auf eigenes ${modelName}-Angebot`);
+  }
   if (dealStatus) {
     lines.push('Stand:');
     lines.push(dealStatus);

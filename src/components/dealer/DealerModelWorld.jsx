@@ -1,5 +1,5 @@
 import { useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { KIA_MODEL_WORLD } from '../../data/dealerLandingContent.js';
 import {
   buildModelTrimPricePresentation,
@@ -65,10 +65,17 @@ export default function DealerModelWorld({
         overflowLabel = landing.overflowLabel;
       }
 
+      const owned = conditions?.ownedVehicleOffer;
+      const ownedOfferHref = owned?.published && owned.slug && owned.modelKey === card.modelKey
+        ? `/fahrzeug/${owned.slug}`
+        : null;
+
       return {
         ...card,
         rateFrom,
         priceFrom,
+        ownedOfferHref,
+        ownedDiscountPercent: ownedOfferHref ? owned.discountPercent : null,
         promoBadges,
         overflowLabel,
         trimLines,
@@ -143,6 +150,9 @@ export default function DealerModelWorld({
                 <div className="dl-modellwelt__body">
                   <h3 className="dl-modellwelt__name">{displayName}</h3>
                   <p className="dl-modellwelt__tagline">{card.tagline}</p>
+                  {card.ownedDiscountPercent != null && (
+                    <p className="dl-modellwelt__tagline">{card.ownedDiscountPercent} % Rabatt</p>
+                  )}
                   {(card.rateFrom != null || card.priceFrom != null) && (
                     <p className="dl-modellwelt__price">
                       {card.rateFrom != null ? (
@@ -184,6 +194,11 @@ export default function DealerModelWorld({
                   )}
                 </div>
               </button>
+              {card.ownedOfferHref && (
+                <Link to={card.ownedOfferHref} className="dl-modellwelt__tagline">
+                  Eigenes Angebot ansehen
+                </Link>
+              )}
             </article>
           );
         })}

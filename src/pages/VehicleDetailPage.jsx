@@ -21,6 +21,7 @@ import { CUSTOMER_LABELS } from '../data/customerFlow.js';
 import { buildFahrzeugeSearchUrl } from '../logic/oneSearchService.js';
 import { buildOfferPath } from '../logic/offerService.js';
 import { createLeadFromMarketplaceVehicle } from '../logic/marketplaceLeadService.js';
+import { createLeadFromOwnedDealerSite } from '../services/dealer/ownedDemandListing.js';
 import { notifyCustomerInquirySubmitted } from '../services/mail/mailInquiryNotify.js';
 import { buildDealerInquiryBrief } from '../logic/dealerInquiryBrief.js';
 import { useVehicleDetailController } from '../hooks/useVehicleDetailController.js';
@@ -146,11 +147,18 @@ export default function VehicleDetailPage() {
       vehicle,
       pricing: displayPrice?.raw,
     });
-    const lead = createLeadFromMarketplaceVehicle(vehicle, action, contact, {
-      pricing: displayPrice?.raw,
-      detailSelection,
-      inquiryBrief,
-    });
+    const lead = vehicle.ownedCommercial
+      ? createLeadFromOwnedDealerSite({
+          vehicle,
+          contact,
+          page: location.pathname,
+          campaign: new URLSearchParams(location.search).get('campaign'),
+        })
+      : createLeadFromMarketplaceVehicle(vehicle, action, contact, {
+          pricing: displayPrice?.raw,
+          detailSelection,
+          inquiryBrief,
+        });
     addLead(lead);
     void notifyCustomerInquirySubmitted(lead, {
       dealerName: dealer?.name ?? dealer?.dealerName,

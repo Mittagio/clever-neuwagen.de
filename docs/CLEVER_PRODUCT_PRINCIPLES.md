@@ -9,7 +9,9 @@ Dieses Dokument ergänzt das [Manifest](CLEVER_MANIFEST.md).
 | Dokument | Frage |
 |----------|--------|
 | [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) | Warum gibt es Clever? |
-| **CLEVER_PRODUCT_PRINCIPLES.md** (dieses Dokument) | Wie treffen wir Produktentscheidungen? |
+| **CLEVER_PRODUCT_PRINCIPLES.md** (dieses Dokument) | Wie treffen wir Produktentscheidungen? (v. a. Kundendialog) |
+| [CLEVER_UX_MANIFEST_V1.md](CLEVER_UX_MANIFEST_V1.md) | Wie sieht der Verkäufer-Sales-Workspace aus? |
+| [CLEVER_SELLER_WORKSPACE_ON_CRM.md](CLEVER_SELLER_WORKSPACE_ON_CRM.md) | Wo endet Clever, wo beginnt das Händler-CRM? |
 
 Es ist **verbindlich**. Jede neue Funktion muss dazu passen.
 
@@ -20,6 +22,8 @@ Verwandte Dokumente:
 - **[UI Filigree – Premium Visual Law](CLEVER_UI_FILIGREE.md)** ← Optik Desktop/Mobile
 - **[Responsive Design](CLEVER_RESPONSIVE_DESIGN.md)**
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)**
+- **[UX Manifest V1 – Seller Sales Workspace](CLEVER_UX_MANIFEST_V1.md)** ← Verkäufer-UI (eine Primary, Kontext vor Feldern)
+- **[Seller Workspace auf dem CRM](CLEVER_SELLER_WORKSPACE_ON_CRM.md)** ← Salesforce/MySales = System of Record; Clever = Verkaufsschicht
 - **[Clever Lead – Dokument des Verständnisses](CLEVER_LEAD.md)**
 - [Charakter & Kommunikation](clever-character-guide.md) – *Wie spricht Clever?*
 - [Conversation Design](clever-conversation-design.md) – *Wie fühlt sich das Gespräch an?*
@@ -33,7 +37,7 @@ Verwandte Dokumente:
 - **[Knowledge Conversation v1.0 – Erst antworten, dann verstehen](CLEVER_KNOWLEDGE_CONVERSATION.md)**
 - [Leitsatz (Projektroot)](../PRINCIPLE.md)
 
-**Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** → Clever Lead → Charakter → Conversation Design → Umsetzung.
+**Hierarchie:** Manifest → **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** → **Verständnis** → **Produktprinzipien** (Kundendialog) → **[UX Manifest V1](CLEVER_UX_MANIFEST_V1.md)** (Seller-Workspace-UI) → Clever Lead → Charakter → Conversation Design → Umsetzung.
 
 ---
 
@@ -280,14 +284,17 @@ Siehe auch: [Was Clever immer sein wird](CLEVER_MANIFEST.md#was-clever-immer-sei
 |-------|-------------|
 | Warum Clever existiert, Verfassung, Leitsatz | [CLEVER_MANIFEST.md](CLEVER_MANIFEST.md) |
 | **Kern: Verständnis – wie es entsteht und wächst** | **[CLEVER_FOUR_TASKS.md](CLEVER_FOUR_TASKS.md)** |
-| **Produktregeln, Timing, Einstieg, Prüfung** | **Dieses Dokument** |
+| **Produktregeln, Timing, Einstieg, Prüfung (v. a. Kundendialog)** | **Dieses Dokument** |
+| **Seller Sales Workspace UX (Briefing, Primary, Anti-Patterns)** | **[CLEVER_UX_MANIFEST_V1.md](CLEVER_UX_MANIFEST_V1.md)** |
 | **Clever Lead – Dokument des Verständnisses** | [CLEVER_LEAD.md](CLEVER_LEAD.md) |
 | Ton, Wortwahl, Persönlichkeit | [clever-character-guide.md](clever-character-guide.md) |
 | Screens, Turns, Notepad, zwei Welten | [clever-conversation-design.md](clever-conversation-design.md) |
 
-Bei Widerspruch gilt: **Manifest** > **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** > **Verständnis** (Wahrheit in Vier Aufgaben) > **Produktprinzipien** > Charakter > Conversation Design > Code.
+Bei Widerspruch gilt: **Manifest** > **[Vier Aufgaben](CLEVER_FOUR_TASKS.md)** > **Verständnis** (Wahrheit in Vier Aufgaben) > **Produktprinzipien** (Kundendialog) · **[UX Manifest V1](CLEVER_UX_MANIFEST_V1.md)** (Seller-UI) > Charakter > Conversation Design > Code.
 
-Bei Unklarheit in der Umsetzung: **Produktprüfung** (oben) anwenden.
+**Hinweis:** „Clever verkauft keine Fahrzeuge“ (dieses Dokument) gilt für die **Kundenoberfläche**. Der Verkäufer-Workspace darf Angebote vorbereiten und senden – Clever bedient dann CRM/Offer für den Verkäufer ([UX Manifest V1](CLEVER_UX_MANIFEST_V1.md)).
+
+Bei Unklarheit in der Umsetzung: **Produktprüfung** (oben) anwenden; bei Seller-UI zusätzlich den Check in [UX Manifest V1](CLEVER_UX_MANIFEST_V1.md).
 
 ---
 

@@ -65,6 +65,7 @@ export default function BackendPage() {
     removeModelPromotion,
     addCustomTargetGroup,
     publishDealerChanges,
+    commitOwnedVehicleOffer,
     discardDraft,
     resetToDefaults,
   } = useDraftDealerConditions();
@@ -139,6 +140,7 @@ export default function BackendPage() {
           onRemovePromotion={removeModelPromotion}
           onAddCustomTargetGroup={addCustomTargetGroup}
           onPublish={() => publishDealerChanges()}
+          onCommitOwnedOffer={commitOwnedVehicleOffer}
         />
       );
     }

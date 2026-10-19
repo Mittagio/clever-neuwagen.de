@@ -16,6 +16,7 @@ Verwandte Dokumente:
 - **[Die vier Aufgaben – Kern des Produkts](CLEVER_FOUR_TASKS.md)** ← verbindlich für UX, Produkt und Architektur
 - **[Produktprinzipien – Wie wir Produktentscheidungen treffen](CLEVER_PRODUCT_PRINCIPLES.md)** ← verbindlich für jede neue Funktion
 - **[UX Manifest V1 – Seller Sales Workspace](CLEVER_UX_MANIFEST_V1.md)** ← verbindlich für Verkäufer-UI (Briefing · eine Primary · 3-Sekunden-Test)
+- **[Seller Workspace auf dem CRM](CLEVER_SELLER_WORKSPACE_ON_CRM.md)** ← Kia Salesforce/MySales bleibt System of Record
 - **[Dual Input / Single State](CLEVER_DUAL_INPUT_SINGLE_STATE.md)** ← Klick + Composer → eine Wahrheit
 - **[Global Composer – Der Composer ist Clever](CLEVER_GLOBAL_COMPOSER.md)** ← App-weiter Verkäuferassistent
 - **[UI Filigree – Premium Visual Law](CLEVER_UI_FILIGREE.md)** ← verbindlich für Desktop/Mobile-Optik (Polish only)

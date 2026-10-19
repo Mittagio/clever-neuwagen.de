@@ -188,7 +188,11 @@ export function buildPaymentTeaserLine(pricing) {
   const down = pricing.downPayment > 0
     ? `${formatCurrency(pricing.downPayment)} Anzahlung`
     : '0 € Anzahlung';
-  return `Leasing · ${pricing.termMonths} Monate · ${km} km · ${down}`;
+  const discount = Number(pricing.discountPercent);
+  const discountBit = Number.isFinite(discount) && discount > 0
+    ? ` · ${discount} % Rabatt`
+    : '';
+  return `Leasing · ${pricing.termMonths} Monate · ${km} km · ${down}${discountBit}`;
 }
 
 /** Kompakte Zeile für Aktionskarte „Rate anpassen“ */
