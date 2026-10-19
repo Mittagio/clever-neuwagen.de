@@ -39,22 +39,22 @@ export function resolvePublishedDiscountPercent(conditions = {}, modelKey = '', 
   return null;
 }
 
-export function ownedPublishReady(spec = {}) {
-  return ['listPriceGross', 'discountPercent', 'termMonths', 'annualMileage', 'downPayment']
-    .every((key) => num(spec[key]) != null);
+function leasingField(spec = {}, key) {
+  return num(spec[key]);
 }
 
-function firstLeasingPair(conditions = {}, modelKey = '') {
-  const factors = conditions?.leasingFactorsByModel?.[modelKey];
-  if (!factors || typeof factors !== 'object') return { termMonths: null, annualMileage: null };
-  const termKey = factors[48] ? '48' : Object.keys(factors).find((key) => factors[key] && typeof factors[key] === 'object');
-  if (!termKey) return { termMonths: null, annualMileage: null };
-  const kmMap = factors[termKey];
-  const kmKey = kmMap[15000] != null ? '15000' : Object.keys(kmMap)[0];
-  return {
-    termMonths: num(termKey),
-    annualMileage: num(kmKey),
-  };
+/** Laufzeit, km und AZ gehören zusammen. Eine davon ohne die anderen ist keine Leasingaktion. */
+export function ownedLeasingActionComplete(spec = {}) {
+  return ['termMonths', 'annualMileage', 'downPayment']
+    .every((key) => leasingField(spec, key) != null);
+}
+
+export function ownedPublishReady(spec = {}) {
+  if (num(spec.listPriceGross) == null || num(spec.discountPercent) == null) return false;
+  const touched = ['termMonths', 'annualMileage', 'downPayment']
+    .some((key) => leasingField(spec, key) != null);
+  if (touched && !ownedLeasingActionComplete(spec)) return false;
+  return true;
 }
 
 /**
@@ -74,7 +74,6 @@ export function previewOwnedVehiclePublish(conditions = {}, model = {}, pool = g
     && listing?.slug
     && offer.slug === listing.slug,
   );
-  const fromFactors = firstLeasingPair(conditions, modelKey);
   const listFromSettings = num(conditions?.modelSettingsByModel?.[modelKey]?.listPrice);
   const spec = {
     dealerSlug: listing?.dealerSlug || conditions.dealerId || 'autohaus-trinkle',
@@ -89,10 +88,10 @@ export function previewOwnedVehiclePublish(conditions = {}, model = {}, pool = g
     discountPercent: same
       ? num(offer.discountPercent)
       : resolvePublishedDiscountPercent(conditions, modelKey, offer?.paymentType || 'leasing'),
-    termMonths: same ? num(offer.termMonths) : fromFactors.termMonths,
-    annualMileage: same ? num(offer.annualMileage) : fromFactors.annualMileage,
+    termMonths: same ? num(offer.termMonths) : null,
+    annualMileage: same ? num(offer.annualMileage) : null,
     downPayment: same ? num(offer.downPayment) : null,
-    paymentType: same ? (offer.paymentType || 'leasing') : 'leasing',
+    paymentType: same && ownedLeasingActionComplete(offer) ? (offer.paymentType || 'leasing') : null,
     validUntil: same ? (offer.validUntil || '') : '',
   };
   return {
@@ -125,7 +124,8 @@ export function publishOwnedVehicleOffer(conditions = {}, spec = {}) {
   const modelKey = String(spec.modelKey || listing?.modelKey || '').toLowerCase();
   const discountPercent = num(spec.discountPercent);
   const listPriceGross = num(spec.listPriceGross ?? spec.listPrice);
-  const paymentType = spec.paymentType || 'leasing';
+  const leasingAction = ownedLeasingActionComplete(spec);
+  const paymentType = leasingAction ? (spec.paymentType || 'leasing') : null;
   const offer = {
     id: spec.id || `owned-${modelKey}-${String(spec.trimId || listing?.trimId || 'offer').toLowerCase()}`,
     published: true,
@@ -137,9 +137,9 @@ export function publishOwnedVehicleOffer(conditions = {}, spec = {}) {
     trimId: spec.trimId || listing?.trimId || null,
     listPriceGross,
     discountPercent,
-    termMonths: num(spec.termMonths),
-    annualMileage: num(spec.annualMileage ?? spec.mileagePerYear),
-    downPayment: num(spec.downPayment) ?? 0,
+    termMonths: leasingAction ? num(spec.termMonths) : null,
+    annualMileage: leasingAction ? num(spec.annualMileage ?? spec.mileagePerYear) : null,
+    downPayment: leasingAction ? num(spec.downPayment) : null,
     paymentType,
     validUntil: spec.validUntil || null,
     publishedAt: spec.publishedAt || new Date().toISOString(),
@@ -293,7 +293,7 @@ export function createLeadFromOwnedDealerSite({
       label: [commercial.model || vehicle.model, commercial.trim].filter(Boolean).join(' '),
       slug: commercial.slug,
     },
-    paymentType: commercial.paymentType || 'leasing',
+    paymentType: commercial.paymentType || null,
     desiredRate: null,
     currentRate: null,
     ownedCommercial: { ...commercial, rate: null },
@@ -301,7 +301,7 @@ export function createLeadFromOwnedDealerSite({
     wish: {
       modelKey,
       trim: commercial.trim,
-      paymentType: commercial.paymentType || 'leasing',
+      paymentType: commercial.paymentType || null,
       termMonths: commercial.termMonths,
       mileagePerYear: commercial.annualMileage,
       annualMileage: commercial.annualMileage,
@@ -310,8 +310,8 @@ export function createLeadFromOwnedDealerSite({
       listPriceGross: commercial.listPriceGross,
       commercialScenarios: [{
         id: `cs-${commercial.id}`,
-        type: commercial.paymentType || 'leasing',
-        paymentType: commercial.paymentType || 'leasing',
+        type: commercial.paymentType || null,
+        paymentType: commercial.paymentType || null,
         termMonths: commercial.termMonths,
         mileagePerYear: commercial.annualMileage,
         annualMileage: commercial.annualMileage,
@@ -352,12 +352,12 @@ export function seedOwnedConceptDraft(lead = {}) {
         trim: commercial.trim || null,
       },
     },
-    { field: 'paymentType', needsConfirmation: false, value: commercial.paymentType || 'leasing' },
+    { field: 'paymentType', needsConfirmation: false, value: commercial.paymentType || null },
     { field: 'termMonths', needsConfirmation: false, value: commercial.termMonths },
     { field: 'annualMileage', needsConfirmation: false, value: commercial.annualMileage },
     { field: 'downPayment', needsConfirmation: false, value: commercial.downPayment },
     { field: 'discountPercent', needsConfirmation: false, value: commercial.discountPercent },
-  ];
+  ].filter((fact) => fact.value != null);
   const ensured = ensureConceptOfferDraftFromCapture(lead, facts, {
     modelKey: commercial.modelKey,
     sellerInput: '',
@@ -374,18 +374,21 @@ export function seedOwnedConceptDraft(lead = {}) {
     annualMileage: commercial.annualMileage,
     mileagePerYear: commercial.annualMileage,
     downPayment: commercial.downPayment,
-    paymentType: commercial.paymentType || 'leasing',
+    paymentType: commercial.paymentType || null,
     rate: null,
     monthlyRate: null,
     rateAuthority: 'non_authoritative',
   };
+  const scenarioId = draft.commercialScenarioId || scenario.id || null;
+  const storedScenario = scenarioId ? { ...scenario, id: scenarioId } : scenario;
   const offerDrafts = {
     ...(ensured.lead.crm?.cleverWorkingState?.offerDrafts || {}),
     [draft.offerDraftId]: {
       ...draft,
+      commercialScenarioId: scenarioId,
       rate: null,
       monthlyRate: null,
-      commercialScenario: scenario,
+      commercialScenario: storedScenario,
     },
   };
   return {
@@ -397,6 +400,10 @@ export function seedOwnedConceptDraft(lead = {}) {
       cleverWorkingState: {
         ...(ensured.lead.crm?.cleverWorkingState || {}),
         offerDrafts,
+        commercialScenarios: {
+          ...(ensured.lead.crm?.cleverWorkingState?.commercialScenarios || {}),
+          ...(scenarioId ? { [scenarioId]: storedScenario } : {}),
+        },
         currentOfferDraft: {
           ...(ensured.lead.crm.cleverWorkingState?.currentOfferDraft || {}),
           ...offerDrafts[draft.offerDraftId],

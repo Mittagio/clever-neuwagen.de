@@ -136,4 +136,57 @@ const roundtrip = normalizeDealerConditions(published);
 assert.equal(roundtrip.ownedVehicleOffer.discountPercent, 30);
 assert.equal(roundtrip.ownedVehicleOffer.listPriceGross, 42960);
 
+const sportageListing = getKiaTrinklePilotStock().find((item) => item.modelKey === 'sportage');
+assert.ok(sportageListing, 'Pilot-Pool enthält Sportage');
+const sportagePreview = previewOwnedVehiclePublish(normalizeDealerConditions({
+  dealerId: 'autohaus-trinkle',
+  leasingFactorsByModel: { sportage: { 48: { 15000: 1.2 } } },
+}), { id: 'sportage', name: 'Sportage' });
+assert.equal(sportagePreview.spec.termMonths, null);
+assert.equal(sportagePreview.spec.annualMileage, null);
+assert.equal(sportagePreview.spec.downPayment, null);
+assert.equal(ownedPublishReady({
+  listPriceGross: sportageListing.listPriceGross,
+  discountPercent: 30,
+}), true);
+assert.equal(ownedPublishReady({
+  listPriceGross: sportageListing.listPriceGross,
+  discountPercent: 30,
+  termMonths: 48,
+}), false);
+
+const discountAction = publishOwnedVehicleOffer(normalizeDealerConditions({
+  dealerId: 'autohaus-trinkle',
+}), {
+  ...sportagePreview.spec,
+  discountPercent: 30,
+});
+assert.equal(discountAction.ownedVehicleOffer.discountPercent, 30);
+assert.equal(discountAction.ownedVehicleOffer.termMonths, null);
+assert.equal(discountAction.ownedVehicleOffer.annualMileage, null);
+assert.equal(discountAction.ownedVehicleOffer.downPayment, null);
+assert.equal(discountAction.ownedVehicleOffer.paymentType, null);
+
+const sportageCard = presentOwnedVehicle(sportageListing, discountAction);
+const sportageLead = createLeadFromOwnedDealerSite({
+  vehicle: sportageCard,
+  contact: { name: 'Thomas Berger', email: 'thomas.berger@example.de', phone: '017612345678' },
+});
+assert.equal(sportageLead.source, OWNED_DEALER_SITE_SOURCE);
+assert.equal(sportageLead.ownedCommercial.discountPercent, 30);
+assert.equal(sportageLead.ownedCommercial.termMonths, null);
+assert.equal(sportageLead.ownedCommercial.annualMileage, null);
+assert.equal(sportageLead.ownedCommercial.downPayment, null);
+assert.equal(sportageLead.paymentType, null);
+assert.equal(sportageLead.desiredRate, null);
+const sportageDraft = getOfferDraftById(
+  sportageLead,
+  sportageLead.crm.cleverWorkingState.currentOfferDraftId,
+);
+assert.equal(sportageDraft.commercialScenario.discountPercent, 30);
+assert.equal(sportageDraft.commercialScenario.termMonths ?? null, null);
+assert.equal(sportageDraft.commercialScenario.annualMileage ?? null, null);
+assert.equal(sportageDraft.commercialScenario.downPayment ?? null, null);
+assert.equal(sportageDraft.rate, null);
+
 console.log('ownedDemandListing.golden.test.js: ok');

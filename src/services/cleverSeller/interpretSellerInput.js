@@ -661,7 +661,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
 
   // Mitnutzerin („Seine Frau fährt auch regelmäßig“) ≠ neuer Lead / Name
   const coDriver = t.match(
-    /\b(?:seine|ihre|die)\s+(frau|ehefrau|partnerin)\s+fährt\s+auch\b/i,
+    /\b(?:seine|ihre|die)\s+(frau|ehefrau|partnerin)\s+fährt\s+(?:\S+\s+){0,4}auch\b/i,
   ) || t.match(
     /\b(?:frau|ehefrau|partnerin)\s+fährt\s+(?:auch\s+)?regelmäßig\b/i,
   );
@@ -1332,14 +1332,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   // Trade-in / existing vehicle (Kia-Interesse nicht als Alt-Fzg. werten)
   // hasTradeInCue respektiert Negation („nicht in Zahlung geben“)
   if (hasTradeInCue(raw) && !facts.some((f) => f.field === 'tradeInRequested')) {
-    const tentative = /\b(eventuell|vielleicht|ggf\.?|evtl\.?|gegebenenfalls|könnte|koennte)\b/i.test(t);
+    const tentative = /\b(eventuell|vielleicht|wahrscheinlich|ggf\.?|evtl\.?|gegebenenfalls|könnte|koennte)\b/i.test(t);
     pushFact(facts, createExtractedFact({
       factClass: SELLER_FACT_CLASS.TRADE_IN_FACT,
       field: 'tradeInRequested',
       value: tentative
         ? { status: 'possible', requested: true }
         : { status: 'requested', requested: true },
-      label: tentative ? 'Inzahlungnahme eventuell' : 'Inzahlungnahme gewünscht',
+      label: tentative
+        ? (/\bwahrscheinlich\b/i.test(t) ? 'Inzahlungnahme wahrscheinlich' : 'Inzahlungnahme eventuell')
+        : 'Inzahlungnahme gewünscht',
       confidence: tentative ? 0.9 : 0.96,
     }));
   }
@@ -2338,7 +2340,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
     }
   }
 
-  const hasAhkToken = /\bahk\b|anhängerkupplung|anhaengerkupplung/i.test(t);
+  const hasAhkToken = /\bahk\b|anhängerkupplung|anhaengerkupplung|anhängekupplung|anhaengekupplung/i.test(t);
   const ahkListCue = /(?:^|[—–\-,;:/|])\s*ahk\b|\bahk\s*[,;./|—–-]/i.test(t);
   const ahkIntentCue = /\bwichtig|braucht|möchte|moechte|will|mit\b|m[uü]ssen\s+drin|muss\s+drin/i.test(t);
   const ahkRemoveCue = (
@@ -2491,6 +2493,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       continue;
     }
     const matchedEquip = t.match(rule.re)?.[0] || rule.label;
+    const equipAt = t.toLowerCase().indexOf(String(matchedEquip).toLowerCase());
+    const equipWindow = equipAt >= 0
+      ? t.slice(Math.max(0, equipAt - 24), Math.min(t.length, equipAt + String(matchedEquip).length + 48))
+      : String(matchedEquip);
+    if (/\begal\b|nicht\s+wichtig|keine\s+rolle/i.test(equipWindow)) continue;
     let equipLabel = rule.label;
     if (rule.id === 'winter') {
       const p1 = matchedEquip.match(/p\s*(\d+)/i);
@@ -2645,6 +2652,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       continue;
     }
     if (hit.kind === 'equipment' || hit.kind === 'package') {
+      const hitAt = t.toLowerCase().indexOf(String(hit.matched || hit.label || '').toLowerCase());
+      const hitWindow = hitAt >= 0
+        ? t.slice(Math.max(0, hitAt - 24), Math.min(t.length, hitAt + String(hit.matched || '').length + 48))
+        : '';
+      if (/\begal\b|nicht\s+wichtig|keine\s+rolle/i.test(hitWindow)) continue;
       const already = facts.some((f) => (
         f.field === 'equipmentWish'
         && (
@@ -2916,10 +2928,11 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       }));
     }
   }
+  const leasingFactorContext = /\bleasingfaktor\b/i.test(t);
   const discount = t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*(?:%|prozent)\s*(?:sonder)?rabatt\b/i)
-    || (!financeAprContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*%(?!\d)/))
-    || (!financeAprContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*prozent\b/i));
-  if (discount && !financeAprContext) {
+    || (!financeAprContext && !leasingFactorContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*%(?!\d)/))
+    || (!financeAprContext && !leasingFactorContext && t.match(/\b(\d{1,3}(?:[.,]\d+)?)\s*prozent\b/i));
+  if (discount && !financeAprContext && !leasingFactorContext) {
     const hasOfferCue = /\brabatt|angebot|erstell|mach|sonder|leasing|finanz|\bbar\b/i.test(t);
     const checked = validateDiscountPercent(discount[1]);
     if (!checked.ok) {
@@ -3025,7 +3038,7 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
   } else if (
     plannedMonthYear
     && !facts.some((f) => f.field === 'deliveryDeadline')
-    && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin|benötig|brauch|fahrzeug)\b/i.test(t)
+    && /\b(?:plant|planung|liefern|lieferung|bereit|fahrzeug\s+für|neues?\s+fahrzeug|wunschtermin|zieltermin|benötig\w*|brauch\w*|fahrzeug)\b/i.test(t)
     // Vertragsende und geplanter Wechsel dürfen koexistieren („endet …“ ≠ „benötige ab …“)
     && (
       !facts.some((f) => f.field === 'existingContractEnd')
@@ -3466,12 +3479,16 @@ export function extractUniversalSellerFacts(text = '', options = {}) {
       label: 'HSN/TSN je Konfiguration mitteilen',
     });
   }
+  const hapMileageBoilerplate = /nachbelastung\s+mehrkilometer|freigrenze\s+[\d.]+\s*km/i.test(t);
   if (
-    /mehrkilometer|mehr-?km|kosten\s+(?:pro\s+)?(?:mehr)?kilometer/i.test(t)
-    || (
-      /20\.?000\s*km/i.test(t)
-      && /(?:teurer|kosten|was\s+kostet|wären|bzw)/i.test(t)
-      && /15\.?000\s*km/i.test(t)
+    !hapMileageBoilerplate
+    && (
+      /mehrkilometer|mehr-?km|kosten\s+(?:pro\s+)?(?:mehr)?kilometer/i.test(t)
+      || (
+        /20\.?000\s*km/i.test(t)
+        && /(?:teurer|kosten|was\s+kostet|wären|bzw)/i.test(t)
+        && /15\.?000\s*km/i.test(t)
+      )
     )
   ) {
     openQuestionSpecs.push({
@@ -3720,6 +3737,7 @@ export function detectSellerTurnIntents(text = '', facts = [], options = {}) {
   const looksLikeContractLookup = isCustomerContractQuery(t)
     && !/\b(kinder|verheiratet|wunschrate|netto|in\s+zahlung|nehmen\s+wir)\b/i.test(t);
   const isContractQuery = !isContractIntake && !isContractCompare && !isInboundPaste && !isReplyPaste
+    && !offerPdfDrop
     && looksLikeContractLookup;
   const isInboundLead = isInboundPaste && !isContractQuery;
   const isCustomerReply = isReplyPaste && !isContractQuery;
@@ -4126,6 +4144,14 @@ export function interpretSellerInput(sellerInput = '', options = {}) {
       facts,
       extractSellerFactsFromOfferPdfText(normalized),
     );
+    // Bank-PDF: Dokumenttitel/Signatur ≠ Kunde, Leasingfaktor ≠ Rabatt,
+    // Mehrkilometer-Boilerplate ≠ 20.000-km-Frage
+    facts = facts.filter((f) => {
+      if (f.field === 'customerName') return false;
+      if (f.field === 'discountPercent' && /\bleasingfaktor\b/i.test(normalized)) return false;
+      if (f.field === 'openCustomerQuestion' && f.value?.topic === 'excess_mileage') return false;
+      return true;
+    });
   }
 
   // Offer-PDF: Gültigkeitsdatum / „Beratung“ / „kommen“ ≠ Terminvorschlag

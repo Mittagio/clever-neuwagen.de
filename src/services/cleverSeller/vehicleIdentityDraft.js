@@ -329,7 +329,11 @@ export function buildVehicleIdentityDraftFromFacts(input = {}) {
     || colorRawFromFact(colorFact)
     || existing?.color?.raw
     || null;
-  if (!colorRaw) {
+  const hasColorVariants = facts.some((f) => f.field === 'colorVariants');
+  if (hasColorVariants && existing?.color?.status !== IDENTITY_SLOT_STATUS.CAPTURED) {
+    colorRaw = null;
+  }
+  if (!colorRaw && !hasColorVariants) {
     const colorHaystack = [input.sellerInput, ...unresolvedNotes, interest?.label].filter(Boolean).join(' ');
     const colorMatch = colorHaystack.match(
       /\b(aurora(?:schwarz|black)?(?:\s*pearl)?|schneeweiß(?:\s*pearl)?|snow\s*white(?:\s*pearl)?|zilina(?:schwarz)?|carrara(?:weiß|weiss)?|terracotta|schwarz\w*|weiß\w*|weiss\w*|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*)\b/i,
@@ -750,6 +754,18 @@ export function buildCommercialScenarioFromLead(lead = {}, facts = []) {
       ? 'business'
       : (customerTypeRaw || null));
 
+  const owned = lead?.ownedCommercial || null;
+  const wishModel = String(wish.modelKey || '').toLowerCase();
+  const ownedModel = String(owned?.modelKey || '').toLowerCase();
+  const sameOwnedModel = Boolean(owned) && (!wishModel || !ownedModel || wishModel === ownedModel);
+  const discountRaw = sameOwnedModel
+    ? (owned?.discountPercent ?? wish.discountPercent)
+    : wish.discountPercent;
+  const discountPercent = Number.isFinite(Number(discountRaw)) ? Number(discountRaw) : null;
+  const listPriceRaw = sameOwnedModel
+    ? (owned?.listPriceGross ?? wish.listPriceGross)
+    : wish.listPriceGross;
+
   return {
     id: uid('com'),
     paymentType: paymentType === 'unknown' ? null : paymentType,
@@ -757,10 +773,39 @@ export function buildCommercialScenarioFromLead(lead = {}, facts = []) {
     termMonths: termMonths != null ? Number(termMonths) : null,
     annualMileage: annualMileage != null ? Number(annualMileage) : null,
     downPayment: downPayment != null ? Number(downPayment) : null,
+    discountPercent,
+    listPriceGross: listPriceRaw != null ? Number(listPriceRaw) : null,
     rate: null,
     rateAuthority: RATE_AUTHORITY.NON_AUTHORITATIVE,
     source: 'customer_truth',
   };
+}
+
+function overlayCommercialFromFacts(base = {}, lead = {}, facts = []) {
+  const overlay = buildCommercialScenarioFromLead(lead, facts);
+  const next = { ...base };
+  if (overlay.termMonths != null) next.termMonths = overlay.termMonths;
+  if (overlay.annualMileage != null) {
+    next.annualMileage = overlay.annualMileage;
+    next.mileagePerYear = overlay.annualMileage;
+  }
+  if (overlay.downPayment != null) next.downPayment = overlay.downPayment;
+  if (overlay.paymentType) {
+    next.paymentType = overlay.paymentType;
+    if (!next.type) next.type = overlay.paymentType;
+  }
+  if (next.discountPercent == null && overlay.discountPercent != null) {
+    next.discountPercent = overlay.discountPercent;
+  }
+  if (next.listPriceGross == null && overlay.listPriceGross != null) {
+    next.listPriceGross = overlay.listPriceGross;
+  }
+  if (next.rateAuthority !== RATE_AUTHORITY.AUTHORITATIVE) {
+    next.rate = null;
+    next.monthlyRate = null;
+    next.rateAuthority = RATE_AUTHORITY.NON_AUTHORITATIVE;
+  }
+  return next;
 }
 
 /**
@@ -986,7 +1031,9 @@ export function enrichPrepareOfferPayloadWithIdentityDraft(payload = {}, {
   });
 
   const commercial = payload.commercialScenario
-    || existingStored?.commercialScenario
+    || (existingStored?.commercialScenario
+      ? overlayCommercialFromFacts(existingStored.commercialScenario, lead || {}, facts)
+      : null)
     || buildCommercialScenarioFromLead(lead || {}, facts);
 
   // Autoritativer PDF-/Bank-Rate auch bei neuem Draft behalten (nicht still strippen)

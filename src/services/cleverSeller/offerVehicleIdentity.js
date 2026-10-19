@@ -35,6 +35,16 @@ const TRIM_RE = /\b(gt-?\s*line|x-?\s*line(?:\s*\d+)?|earth|air|spirit|vision|dr
 // Kein \\b vor/nach ß – JS-Word-Boundary bricht „weiß“
 const COLOR_RE = /(?:^|[^A-Za-zÄÖÜäöüß])(magma(?:[\s-]*rot)?(?:\s*metallic)?|schwarz\w*|weiß\w*|weiss\w*|terracotta|blau\w*|grau\w*|silber\w*|rot\w*|gr[uü]n\w*|clear\s*white|interstellar(?:\s*grau)?|schneewei[sß](?:\s*pearl)?|runway\s*rot)(?=$|[^A-Za-zÄÖÜäöüß])/i;
 
+function currentConceptModelKey(lead = {}) {
+  const state = lead?.crm?.cleverWorkingState;
+  const draft = state?.currentOfferDraftId
+    ? state.offerDrafts?.[state.currentOfferDraftId]
+    : null;
+  if (!draft) return '';
+  const identity = state?.vehicleIdentityDrafts?.[draft.vehicleIdentityDraftId];
+  return normalizeModelKey(draft.focusModelKey || identity?.modelKey || '');
+}
+
 function normalizeModelKey(raw = '') {
   return String(raw || '')
     .toLowerCase()
@@ -151,7 +161,9 @@ function isBatchOfferCueLocal(text = '') {
 export function detectOfferMutationMode(text = '') {
   const t = String(text || '').trim();
   if (!t) return OFFER_MUTATION_MODE.UNKNOWN;
-  if (/\bnoch\s+(?:ein(?:en|em)?|eins)\b/i.test(t)
+  // „fährt noch einen Tiguan“ = Bestand, kein zweites Angebot
+  const ownershipNoch = /\b(?:fährt|faehrt|fahre|hat|hatte|besitzt|aktuell)\b[^.?\n]{0,48}\bnoch\s+(?:ein(?:en|em)?|eins)\b/i.test(t);
+  if ((/\bnoch\s+(?:ein(?:en|em)?|eins)\b/i.test(t) && !ownershipNoch)
     || /\bzusätzlich(?:es|en)?\b/i.test(t)
     || /\balternativ(?:e|es)?\b/i.test(t)
     || /\bzweites?\s+angebot\b/i.test(t)
@@ -223,7 +235,9 @@ export function parseOfferIdentityFollowUp(text = '') {
       : `${String(powertrainMatch[1] || powertrainMatch[0]).replace(',', '.')} kWh`)
     : null;
 
-  if (model && (trim || color || packages.length || powertrain || /\bdoch\b/i.test(t))) {
+  const captureDump = t.length > 180
+    || /\b(?:monate?|kilometer|\bkm\b|anzahlung|leasing|finanzierung)\b/i.test(t);
+  if (!captureDump && model && (trim || color || packages.length || powertrain || /\bdoch\b/i.test(t))) {
     return {
       kind: 'vehicle_identity',
       modelKey: normalizeModelKey(model[1]),
@@ -828,10 +842,13 @@ export function resolveOfferVehicleTarget({
     const match = tracks.find((t) => (
       normalizeModelKey(t.config?.modelKey || t.modelLabel) === explicit.modelKey
     ));
+    const currentKey = currentConceptModelKey(lead);
+    const sameOpenDraft = Boolean(currentKey && currentKey === explicit.modelKey);
     const updateExisting = mutationMode === OFFER_MUTATION_MODE.UPDATE_EXISTING
       || Boolean(offerTrackId && match && match.id === offerTrackId)
-      || Boolean(focus && match && match.id === focus.id);
-    const createNew = !match && mutationMode !== OFFER_MUTATION_MODE.UPDATE_EXISTING;
+      || Boolean(focus && match && match.id === focus.id)
+      || sameOpenDraft;
+    const createNew = !match && !sameOpenDraft && mutationMode !== OFFER_MUTATION_MODE.UPDATE_EXISTING;
     return {
       status: OFFER_VEHICLE_TARGET_STATUS.RESOLVED,
       vehicleTrackId: match?.id || (updateExisting ? offerTrackId : null) || null,

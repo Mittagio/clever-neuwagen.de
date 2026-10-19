@@ -118,12 +118,12 @@ export function useVehicleDetailController({ slug, searchParams }) {
     setDetailSelection(createInitialDetailSelection(vehicle, {
       trim: listingTrimId,
       selectedFeatures: initialWishIds,
-      ...(commercial ? {
-        paymentMode: commercial.paymentType === 'finance' ? 'financing' : (commercial.paymentType || 'leasing'),
-        termMonths: commercial.termMonths ?? 48,
-        mileagePerYear: commercial.annualMileage ?? DEFAULT_MILEAGE,
-        downPayment: commercial.downPayment ?? 0,
+      ...(commercial?.paymentType ? {
+        paymentMode: commercial.paymentType === 'finance' ? 'financing' : commercial.paymentType,
       } : {}),
+      ...(commercial?.termMonths != null ? { termMonths: commercial.termMonths } : {}),
+      ...(commercial?.annualMileage != null ? { mileagePerYear: commercial.annualMileage } : {}),
+      ...(commercial?.downPayment != null ? { downPayment: commercial.downPayment } : {}),
     }));
   }, [vehicle?.slug, vehicle?.ownedCommercial?.id, listingTrimId, initialWishIds.join(',')]);
   const [selectedDealerSlug, setSelectedDealerSlug] = useState(null);
@@ -291,10 +291,17 @@ export function useVehicleDetailController({ slug, searchParams }) {
       activeDealer,
       { basePricing, vehicle },
     );
-    const discount = vehicle.ownedCommercial?.discountPercent;
+    const commercial = vehicle.ownedCommercial;
+    const discount = commercial?.discountPercent;
     if (!price || discount == null) return price;
     const bit = `${discount} % Rabatt`;
-    const withBit = (line) => (line && !String(line).includes(bit) ? `${line} · ${bit}` : line);
+    const listingHasTerms = commercial?.termMonths != null
+      || commercial?.annualMileage != null
+      || commercial?.downPayment != null;
+    const withBit = (line) => {
+      if (!listingHasTerms) return bit;
+      return line && !String(line).includes(bit) ? `${line} · ${bit}` : (line || bit);
+    };
     return {
       ...price,
       subtitle: withBit(price.subtitle),

@@ -226,7 +226,12 @@ function collectEquipmentWishes(intent = {}, text = '') {
     if (EQUIPMENT_WISH_IDS.has(fid)) wishes.add(fid);
   }
 
-  if (/\bwärmepumpe\b|\bwaermepumpe\b/i.test(lower)) wishes.add('heat_pump');
+  if (/\bwärmepumpe\b|\bwaermepumpe\b/i.test(lower)) {
+    const at = lower.search(/\bwärmepumpe\b|\bwaermepumpe\b/i);
+    const window = lower.slice(Math.max(0, at - 24), at + 56);
+    if (/\begal\b|nicht wichtig|keine rolle/.test(window)) wishes.delete('heat_pump');
+    else wishes.add('heat_pump');
+  }
   if (/\b360\s*°?\s*(?:grad\s+)?kamera\b|\b360[-\s]?grad/i.test(lower) || /\b360\s*°/i.test(lower)) {
     wishes.add('camera_360');
   }

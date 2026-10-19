@@ -459,7 +459,8 @@ export function classifySnapshotNoteLabel(label = '') {
 
   // Picker-Chips (Komfort/Technik/…) vor Freinotiz – exakter Katalog-Match
   const handoffEquip = canonicalHandoffEquipmentLabel(text);
-  if (handoffEquip || isHandoffEquipmentLabel(text) || EQUIPMENT_NOTE_RE.test(text)) {
+  const equipmentNegated = /\b(?:ist\s+(?:ihm|ihr|uns|mir)\s+egal|egal|nicht wichtig|keine rolle)\b/i.test(text);
+  if (!equipmentNegated && (handoffEquip || isHandoffEquipmentLabel(text) || EQUIPMENT_NOTE_RE.test(text))) {
     const priority = priorityFromSuffix || parseEquipmentWishPriority(raw);
     return {
       kind: 'structured',

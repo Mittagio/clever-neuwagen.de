@@ -44,6 +44,7 @@ import {
 } from '../dealer/customerContactIdentity.js';
 import { ensureConceptOfferDraftFromCapture } from './ensureConceptOfferDraftFromCapture.js';
 import { maybeMaterializeVehicleOfferAfterDraftUpsert } from './materializeVehicleOfferFromOfferDraft.js';
+import { mergePdfIntoActiveOfferDraft } from './offerDraftIntakeMerge.js';
 import {
   classifySnapshotNoteLabel,
   isSnapshotContactIdentityLabel,
@@ -1489,6 +1490,20 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
     createdFromInbound = true;
   }
 
+  // Dashboard-Offer-PDF ohne geöffneten Kunden: Akte anlegen, PDF-Identität behalten
+  const fromOfferPdf = rawFacts.some((f) => f.source === SELLER_FACT_SOURCE.OFFER_PDF);
+  if (
+    !workingLead?.id
+    && options.allowCreateCustomer
+    && fromOfferPdf
+    && rawFacts.length
+  ) {
+    workingLead = buildInboundLeadDraft({}, {
+      dealerId: options.dealerId,
+    });
+    createdFromInbound = true;
+  }
+
   if (!workingLead?.id || (!rawFacts.length && !hasCustomerActions && !createdFromInbound)) {
     return { ok: false, lead: workingLead, acceptedLabels: [], created: false };
   }
@@ -2150,9 +2165,30 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
       )
     )
   ) {
+    const existingTracks = listCustomerVehicleTracks(nextLead);
+    const interestModel = String(
+      facts.find((f) => f.field === 'vehicleInterest')?.value?.modelKey || '',
+    ).toLowerCase();
+    const existingTrackId = existingTracks.find((t) => (
+      String(t.modelKey || '').toLowerCase() === interestModel
+    ))?.id || existingTracks[0]?.id || null;
+    const activeDraft = getOfferDraftById(
+      nextLead,
+      nextLead?.crm?.cleverWorkingState?.currentOfferDraftId,
+    );
+    const activeModelKey = String(
+      activeDraft?.vehicleIdentityDraft?.modelKey
+      || activeDraft?.focusModelKey
+      || '',
+    ).toLowerCase();
+    const secondOfferCue = /\b(?:zweite[snr]?\s+angebot|zweite\s+variante|als\s+zweites?\s+(?:fahrzeug|angebot)|alternativ\s+noch)\b/i
+      .test(turn.sellerInput || '');
+    const sameActiveDraft = Boolean(interestModel && activeModelKey && activeModelKey === interestModel);
     const ensured = ensureConceptOfferDraftFromCapture(nextLead, facts, {
       sellerInput: turn.sellerInput || '',
-      createNewAlternative: true,
+      modelKey: interestModel || undefined,
+      createNewAlternative: fromOfferPdf ? false : !(sameActiveDraft && !secondOfferCue),
+      vehicleTrackId: fromOfferPdf ? existingTrackId : undefined,
       force: Boolean(
         Array.isArray(nextLead?.crm?.needProfile?.modelCandidates)
         && nextLead.crm.needProfile.modelCandidates.length > 0
@@ -2166,6 +2202,42 @@ export function applyAcceptedSellerTurn(lead = {}, turn = {}, options = {}) {
       ),
     });
     nextLead = ensured.lead;
+    if (ensured.offerDraftId && fromOfferPdf) {
+      if (existingTrackId) {
+        const od = getOfferDraftById(nextLead, ensured.offerDraftId);
+        if (od) {
+          nextLead = upsertOfferDraftOnLead(nextLead, {
+            ...od,
+            vehicleTrackId: existingTrackId,
+          });
+        }
+      }
+      const merged = mergePdfIntoActiveOfferDraft({
+        lead: nextLead,
+        workingMemory: { currentOfferDraftId: ensured.offerDraftId },
+        offerDraftId: ensured.offerDraftId,
+        facts,
+        sellerInput: turn.sellerInput || '',
+      });
+      if (merged.ok) {
+        nextLead = upsertOfferDraftOnLead(nextLead, {
+          ...merged.mutation.offerDraft,
+          vehicleIdentityDraft: merged.mutation.vehicleIdentityDraft,
+          vehicleTrackId: existingTrackId
+            || merged.mutation.offerDraft?.vehicleTrackId
+            || getOfferDraftById(nextLead, ensured.offerDraftId)?.vehicleTrackId
+            || null,
+        }, {
+          changedFields: merged.mutation.changedFields || [],
+        });
+        const materialized = maybeMaterializeVehicleOfferAfterDraftUpsert(
+          nextLead,
+          ensured.offerDraftId,
+          { sellerInput: turn.sellerInput || '' },
+        );
+        if (materialized.ok) nextLead = materialized.lead;
+      }
+    }
   }
   const msgAction = (turn.preparedActions || []).find((a) => (
     a.type === SELLER_TURN_INTENTS.DRAFT_MESSAGE && a.payload?.messageDraft

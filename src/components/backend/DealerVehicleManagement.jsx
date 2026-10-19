@@ -4,6 +4,7 @@ import DealerVehicleModelCard from './DealerVehicleModelCard.jsx';
 import DealerVehicleModelEditor from './DealerVehicleModelEditor.jsx';
 import { listManagementModels } from '../../services/dealer/dealerVehicleManagement.js';
 import {
+  ownedLeasingActionComplete,
   ownedPublishReady,
   previewOwnedVehiclePublish,
 } from '../../services/dealer/ownedDemandListing.js';
@@ -103,7 +104,9 @@ export default function DealerVehicleManagement({
                 onChange={(event) => updatePublishField('discountPercent', event.target.value)}
               />
             </label>
-            <p className="dvm-publish__line">Zahlungsart · Leasing</p>
+            {ownedLeasingActionComplete(publishSpec) ? (
+              <p className="dvm-publish__line">Zahlungsart · Leasing</p>
+            ) : null}
             <label className="dvm-publish__field">
               <span>Laufzeit Monate</span>
               <input

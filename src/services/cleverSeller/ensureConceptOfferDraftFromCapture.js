@@ -12,6 +12,48 @@ import {
 } from './cleverWorkingDraft.js';
 import { stripNonAuthoritativeOfferRates } from './captureThenOffer.js';
 
+function factNumber(facts = [], field) {
+  const fact = facts.find((item) => item.field === field && item.value != null && item.needsConfirmation !== true);
+  const raw = fact?.value != null && typeof fact.value === 'object' ? fact.value.amount ?? fact.value.value : fact?.value;
+  const n = Number(raw);
+  return Number.isFinite(n) ? n : null;
+}
+
+function mergeCaptureOntoExistingDraft(lead, existing, facts = []) {
+  const scenario = { ...(existing.commercialScenario || {}) };
+  const term = factNumber(facts, 'termMonths') ?? factNumber(facts, 'durationMonths');
+  const km = factNumber(facts, 'annualMileage');
+  const down = factNumber(facts, 'downPayment');
+  const payment = facts.find((item) => item.field === 'paymentType' && item.value)?.value || null;
+  if (term != null) scenario.termMonths = term;
+  if (km != null) {
+    scenario.annualMileage = km;
+    scenario.mileagePerYear = km;
+  }
+  if (down != null) scenario.downPayment = down;
+  if (payment) scenario.paymentType = payment;
+  if (scenario.discountPercent == null) {
+    const kept = Number(lead?.ownedCommercial?.discountPercent ?? lead?.wish?.discountPercent);
+    if (Number.isFinite(kept)) scenario.discountPercent = kept;
+  }
+  if (scenario.listPriceGross == null && lead?.ownedCommercial?.listPriceGross != null) {
+    scenario.listPriceGross = lead.ownedCommercial.listPriceGross;
+  }
+  scenario.rate = null;
+  scenario.monthlyRate = null;
+  scenario.rateAuthority = 'non_authoritative';
+  return upsertOfferDraftOnLead(lead, {
+    ...existing,
+    offerDraftId: existing.offerDraftId,
+    commercialScenario: scenario,
+    commercialScenarioId: existing.commercialScenarioId || scenario.id || null,
+    rate: null,
+    monthlyRate: null,
+    rateAuthority: 'non_authoritative',
+    createNewAlternative: false,
+  });
+}
+
 /**
  * @returns {{ lead: object, offerDraftId: string|null }}
  */
@@ -72,12 +114,17 @@ export function ensureConceptOfferDraftFromCapture(lead = {}, facts = [], option
   if (existingId && !createNew) {
     const existing = getOfferDraftById(lead, existingId);
     const existingKey = String(
-      existing?.vehicleIdentityDraft?.model?.canonical
+      existing?.vehicleIdentityDraft?.modelKey
+      || existing?.vehicleIdentityDraft?.model?.canonical
+      || existing?.focusModelKey
       || existing?.modelKey
       || '',
     ).toLowerCase();
     if (existingKey === String(modelKey).toLowerCase()) {
-      return { lead, offerDraftId: existingId };
+      return {
+        lead: mergeCaptureOntoExistingDraft(lead, existing, facts),
+        offerDraftId: existingId,
+      };
     }
   }
 
@@ -89,7 +136,7 @@ export function ensureConceptOfferDraftFromCapture(lead = {}, facts = [], option
   const payload = stripNonAuthoritativeOfferRates(
     enrichPrepareOfferPayloadWithIdentityDraft({
       modelKey,
-      createNewAlternative: true,
+      createNewAlternative: createNew,
       monthlyRate: null,
       rate: null,
       missingRate: true,

@@ -246,7 +246,7 @@ function semanticContextKey(label = '', editKey = '', existingLabel = '') {
   if (extractChildrenCount(compact) != null || edit === 'children') return 'children';
   if (MARRIED_RE.test(compact)) return 'married';
   if (TOWBAR_RE.test(compact)) return 'towbar';
-  if (HEAT_PUMP_RE.test(compact)) return 'heat_pump';
+  if (HEAT_PUMP_RE.test(compact) && !/\begal\b|nicht wichtig|keine rolle/i.test(compact)) return 'heat_pump';
   if (ELECTRIC_NEED_RE.test(compact)) return 'electric';
   if (isExistingVehicleShaped(compact, edit, existingLabel)) return 'existing_vehicle';
   return contextKey(compact);
